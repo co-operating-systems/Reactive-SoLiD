@@ -42,4 +42,11 @@ object UriX:
 		def ?/(segment: String): Uri = uri.withPath(uri.path?/segment)
 
 
-
+	extension (path: Uri.Path)
+		/**
+		 * @return the "container" of this resource if it is not a container, or itself.
+		 *         i.e. Path./("hello).container == Path./
+		 *         and Path./.container == Path./ 
+		 **/
+		def container: Uri.Path =
+			if path.endsWithSlash then path else path.reverse.tail.reverse

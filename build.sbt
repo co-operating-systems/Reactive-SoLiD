@@ -1,13 +1,13 @@
 import Dependencies._
 
-val Scala3Version = "3.0.0"
+val Scala3Version = "3.0.1"
 
 lazy val root = project
 	.in(file("."))
 	.settings(
 		name := "cosy",
 		description := "Reactive Solid",
-		version := "0.1.2",
+		version := "0.1.3",
 		scalaVersion := Scala3Version,
 
 		//resolvers += Resolver.bintrayRepo("akka","snapshots"), //use if testing akka snapshots

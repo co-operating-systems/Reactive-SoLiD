@@ -12,7 +12,10 @@ import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, Gone, InternalSe
 import akka.http.scaladsl.server.ContentNegotiator.Alternative.ContentType
 import akka.stream.{IOResult, Materializer}
 import akka.stream.scaladsl.FileIO
-import run.cosy.http.FileExtensions
+import org.eclipse.rdf4j.model.{IRI, Resource, Value}
+import org.eclipse.rdf4j.model.impl.DynamicModel
+import org.eclipse.rdf4j.rio.{RDFFormat, RDFWriter, Rio}
+import run.cosy.http.{FileExtensions, RDFMediaTypes, RdfParser}
 import run.cosy.http.auth.{KeyIdAgent, WebServerAgent}
 import run.cosy.ldp.ResourceRegistry
 import run.cosy.ldp.Messages.{Do, *}
@@ -27,7 +30,12 @@ import java.security.Principal
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import run.cosy.http.RDFMediaTypes.*
-import run.cosy.http.util.UriX._
+import run.cosy.http.util.UriX.*
+import run.cosy.ldp.SolidCmd.Plain
+import run.cosy.RDF.*
+import run.cosy.RDF.ops.*
+
+import java.io.{ByteArrayOutputStream, OutputStreamWriter, StringWriter}
 
 
 
@@ -211,13 +219,12 @@ object ACResource {
 			//			context.log.info("started LDPR actor at " + rUri.path)
 			new ACResource(rUri, linkName, context).behavior
 		}
+
 }
 
 class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg]) extends ResourceTrait(uri,path,context) {
 	import run.cosy.ldp.fs.Resource.LDPR
 	import run.cosy.ldp.fs.Resource.AcceptMsg
-	import run.cosy.RDF.{given,_}
-	import run.cosy.RDF.ops.{given,_}
 	//For container managed resources these are not appicable.
 
 	override def fileSystemProblemBehavior(e: Exception): Behaviors.Receive[AcceptMsg] = ???
@@ -238,12 +245,12 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg]) extend
 		else None
 
 	// Default behavior is the same as normal behavior, except that a GET on the resource returns the default
-	// representation.
+	// representation amd a PUT does not first check the file to get its properties
 	def defaultBehavior: Behaviors.Receive[AcceptMsg] = VersionsInfo(0,path).NormalBehavior
 
 	/**
 	 * Difference with superclass:
-	 *  - the Version 0 of an acl resource returns the default graph
+	 *  - the Version 0 of an acl resource returns the default graph and a PUT on it does not check the file attributes
 	 *  - A request for NTrig returns the closure of the :imports relations of the resources
 	 *
 	 **/
@@ -272,6 +279,45 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg]) extend
 						cats.Now(grds.other.fold(Map()) { (m1, m2) => m1 ++ m2 } + (meta.url -> grds.graph))
 				).value
 
+				import org.eclipse.rdf4j.model.{Model,Resource as eResource, IRI, Value}
+				import org.eclipse.rdf4j.model.impl.DynamicModelFactory
+
+				val model: DynamicModel = new DynamicModelFactory().createEmptyModel()
+				mapDS.foreach{(name,graph) =>
+					val n: eResource = name.toRdf.asInstanceOf[eResource]
+					graph.triples.foreach{ tr =>
+						tr.subject match
+							case sub: eResource =>
+								val pred: IRI =  tr.predicate
+								val obj: Value = tr.objectt
+								model.add(sub, pred, obj, n)
+							case _ =>
+								//todo: otherwise we have a literal in subject position.
+								// deal with this when moving to banana-rdf 
+					}
+				}
+
+				val out = new ByteArrayOutputStream(524)
+				val wr: RDFWriter = Rio.createWriter(RDFFormat.TRIG,out)
+				import org.eclipse.rdf4j.rio.RDFHandlerException
+
+				try {
+					wr.startRDF
+					import scala.jdk.CollectionConverters.{given,*}
+					for (st <- model.iterator().asScala) wr.handleStatement(st)
+					wr.endRDF
+				} catch {
+					case e: RDFHandlerException =>
+					// todo oh no, do something!
+				} finally {
+					out.close
+				}
+				f(HttpResponse(StatusCodes.OK, Seq(),
+					HttpEntity(`application/trig`.toContentType, new String(out.toByteArray))))
+
+/* Jena version of how to write out TriG
+  todo: abstract and move to banana-rdf
+
 				import org.apache.jena.query.{Dataset, ReadWrite}
 				import org.apache.jena.riot.{Lang, RDFWriter}
 				import org.apache.jena.sparql.core.DatasetGraph
@@ -287,7 +333,8 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg]) extend
 				//Next. we return the DataSet in NQuads format
 				val writer = RDFWriter.create().source(dsg).lang(Lang.TRIG).build()
 				f(HttpResponse(StatusCodes.OK, Seq(),
-					HttpEntity(`application/trig`.toContentType, writer.asString())))
+					HttpEntity(`application/trig`.toContentType, new String(out.toByteArray))))
+			 */
 			end injectDataSetResponse
 
 			if mediaRanges.exists(_.matches(`application/trig`)) then           //todo: select top ones first
@@ -310,23 +357,30 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg]) extend
 		def PlainGet(req: HttpRequest): HttpResponse =
 			//todo: avoid duplication of mediaRange calculation -- requires change of signature of overriden method.
 			val mediaRanges: Seq[MediaRange] = req.headers[Accept].flatMap(_.mediaRanges)
-			if lastVersion == 0 then response(defaultGraph,mediaRanges)
+			if lastVersion == 0 then
+				RdfParser.response(defaultGraph,mediaRanges).withHeaders(ACResource.VersionHeaders)
 			else super.PlainGet(req)
 
-		def response(graph: Rdf#Graph, mtypes: Seq[MediaRange]): HttpResponse =
-			import akka.http.scaladsl.model.StatusCodes.OK
-			import run.cosy.http.RdfParser._
-			val optr = for {
-				highestMT <- highestPriortyRDFMediaType(mtypes)
-				response <- toResponseEntity(graph, highestMT)
-			} yield HttpResponse(OK, ACResource.VersionHeaders, entity=response)
-			optr.getOrElse(
-				HttpResponse(StatusCodes.NotAcceptable, ACResource.VersionHeaders)
-			)
 
-
+		override def Put(cmd: CmdMessage[_]): Unit =
+			if lastVersion == 0 then
+				cmd.commands match
+				case p @ Plain(req,k) =>
+					if req.entity.contentType.mediaType == `text/turtle` then
+						val linkToPath: FPath = versionFPath(1, `text/turtle`.fileExtensions.head)
+						PUTstarted = true
+						BuildContent(PostCreation(linkToPath, cmd))
+					else  cmd.respondWith(
+						HttpResponse(StatusCodes.NotAcceptable,
+						entity=HttpEntity("we only accept Plain HTTP Put")))
+				case _ => cmd.respondWith(HttpResponse(StatusCodes.NotImplemented,
+					entity=HttpEntity("we don't yet deal with PUT for "+cmd.commands)))
+			else super.Put(cmd)
+		end Put
+		
 		def defaultGraph: Rdf#Graph =
-			if linkTo.getFileName.toString.startsWith(".acl") then
+			if lastVersion == 0 && uri.path.container == Uri.Path./ then Graph.empty
+			else if linkTo.getFileName.toString.startsWith(".acl") then
 				Resource.defaultACLGraphContainer
 			else
 				Resource.defaultACLGraph
@@ -398,7 +452,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 			case nle: java.nio.file.NotLinkException => linkDoesNotExistBehavior
 			case uoe: UnsupportedOperationException => fileSystemProblemBehavior(uoe)
 			case se: SecurityException => fileSystemProblemBehavior(se)
-			case io: java.io.IOException => fileSystemProblemBehavior(io)
+			case io: java.io.IOException => linkDoesNotExistBehavior
 		}
 
 
@@ -695,7 +749,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 		 *  can be explored in other implementations.  (Note: Post as Append on LDPRs that accept
 		 *  it adds an extra twist, not taken into account here)
 		 */
-		private def Put(cmd: CmdMessage[_]): Unit = {
+		def Put(cmd: CmdMessage[_]): Unit = {
 			//todo: fix the type of the arguments so that this cannot fail
 			val CmdMessage(run.cosy.ldp.SolidCmd.Plain(req,_),_,_) = cmd
 			//1. we filter out all unaceptable requests, and return error responses to those
@@ -732,24 +786,27 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 				))
 				return ()
 
-			//2. We save data to storage, which if successful will lead to a new version message to be sent
-			//todo: we need to check that the extension fits the previous mime types
-			//     this is definitively clumsy.
-			linkTo.getFileName.toString.split('.').toSeq match
-				case Seq(name, ver, ext) if req.entity.contentType.mediaType.fileExtensions.contains(ext) =>
-					val linkToPath: FPath = versionFPath(lastVersion, ext)
-					PUTstarted = true
-					BuildContent(PostCreation(linkToPath, cmd))
-					//todo: here we should change the behavior to one where requests are stashed until the upload
-					// is finished, or where they are returned with a "please wait" response...
-				case _ => cmd.respondWith(HttpResponse(StatusCodes.Conflict,
-						Seq(),
-						HttpEntity("At present we can only accept a PUT with the same " +
-						"Media Type as previously sent. Which is " + extension(linkTo))
-				))
+			saveContent(cmd, req)
 		}
 
 
+		protected def saveContent(cmd: CmdMessage[_], req: HttpRequest): Unit = {
+			//2. We save data to storage, which if successful will lead to a new version message to be sent
+			//todo: we need to check that the extension fits the previous mime types
+			//     this is definitively clumsy.
+			dotLinkName.remaining(linkTo.getFileName.toString) match
+				case Some(List(AsInt(num),ext)) if req.entity.contentType.mediaType.fileExtensions.contains(ext) =>
+					val linkToPath: FPath = versionFPath(lastVersion+1, ext)
+					PUTstarted = true
+					BuildContent(PostCreation(linkToPath, cmd))
+				//todo: here we should change the behavior to one where requests are stashed until the upload
+				// is finished, or where they are returned with a "please wait" response...
+				case _ => cmd.respondWith(HttpResponse(StatusCodes.Conflict,
+					Seq(),
+					HttpEntity("At present we can only accept a PUT with the same " +
+						"Media Type as previously sent. Which is " + extension(linkTo))
+				))
+		}
 
 		private def GetVersionResponse(path: FPath, ver: Int, mt: MediaType): HttpResponse =
 			context.log.info(s"GetVersionResponse( $path, $ver, $mt)")

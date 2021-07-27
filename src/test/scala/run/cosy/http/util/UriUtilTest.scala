@@ -9,6 +9,7 @@ class UriUtilTest extends munit.FunSuite {
 	val card = Uri("https://bblfish.net/people/henry/card.ttl#me")
 	val bbl = Uri("https://bblfish.net")
 	val bblRt = Uri("https://bblfish.net/")
+	val bblIndx = Uri("https://bblfish.net/index")
 
 	test("uri.filename") {
 		assertEquals(card.fileName,Some("card.ttl"))
@@ -32,6 +33,13 @@ class UriUtilTest extends munit.FunSuite {
 		assert(bbl.ancestorOf(bbl))
 		assert(bbl.ancestorOf(card))
 		assert(bblRt.ancestorOf(card))
+		assert(bblRt.ancestorOf(bblRt))
+		assert(bblRt.ancestorOf(bblIndx))
+	}
+
+	test("path.container") {
+		assertEquals(card.path.container, Uri.Path("/people/henry/"))
+		assertEquals(Uri.Path./("").container, Uri.Path./)
 	}
 
 }

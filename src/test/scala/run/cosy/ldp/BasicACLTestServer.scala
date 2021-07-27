@@ -49,8 +49,11 @@ object BasicACLTestServer extends TestServer:
 			-- wac.agentClass ->- foaf.Agent
 	)
 
+	val rootIndexACL = podGr(URI("/index.acl") -- owl.imports ->- URI("/.acl"))
+
 	val db: Map[Uri, Rdf#Graph] = Map(
 		path("/.acl") -> rootACL,
+		path("/index.acl") -> rootIndexACL,
 		path("/People/.acl") -> pplAcl,
 		path("/People/Berners-Lee/.acl") -> BLAcl,
 		path("/People/Berners-Lee/card.acl") -> cardAcl

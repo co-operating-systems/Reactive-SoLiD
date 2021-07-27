@@ -1,21 +1,20 @@
 package run.cosy.http
 
 import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, PredefinedFromEntityUnmarshallers}
-import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse, StatusCode, Uri}
-import akka.http.scaladsl.model.{ContentType, MediaRange, MediaType, HttpEntity, ResponseEntity}
+import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, HttpRequest, HttpResponse, MediaRange, MediaType, ResponseEntity, StatusCode, StatusCodes, Uri}
 import akka.http.scaladsl.model.headers.Accept
 
-
 import scala.concurrent.{ExecutionContext, Future}
-import org.w3.banana._
-import org.w3.banana.syntax._
+import org.w3.banana.*
+import org.w3.banana.syntax.*
 import org.w3.banana.jena.Jena
 import akka.http.scaladsl.util.FastFuture
 import akka.stream.Materializer
 import org.apache.jena.graph.Graph
-import org.w3.banana.io.{RDFReader,RDFWriter}
+import org.w3.banana.io.{RDFReader, RDFWriter}
+import run.cosy.ldp.fs.ACResource
 
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 import scala.util.control.NoStackTrace
 
 object RdfParser {
@@ -72,13 +71,14 @@ object RdfParser {
 			case RDFMediaTypes.RDFData(mt) => mt
 		}
 
-	def toResponseEntity(graph: Rdf#Graph, mt: MediaType): Option[ResponseEntity] =
+	def toResponseEntity(graph: Rdf#Graph, mt: MediaType): Try[ResponseEntity] =
 		import akka.http.scaladsl.model.HttpCharsets
 		import akka.util.ByteString
 		import akka.http.scaladsl.model.HttpEntity
 		//todo: check the size of the graph, and return a streaming entity if graph is large enough (when async streams are available)
-		def entity(writer: RDFWriter[Rdf,Try,_]): Option[ResponseEntity] =
-			writer.asString(graph,"").toOption.map{ str =>
+		def entity(writer: RDFWriter[Rdf,Try,_]): Try[ResponseEntity] =
+			val sTry = writer.asString(graph,None)
+			sTry.map{ str =>
 				HttpEntity.Strict(ContentType(mt, () => HttpCharsets.`UTF-8`), ByteString(str))
 			}
 		mt match
@@ -86,8 +86,20 @@ object RdfParser {
 		case `application/rdf+xml` => entity(rdfXMLWriter)
 		case `application/n-triples` => entity(ntriplesWriter)
 		case `application/ld+json` => entity(jsonldCompactedWriter)
-		case _ => None
+		case _ => Failure(new Exception(s"we don't have an RDF parser for $mt"))
 
+
+	def response(graph: Rdf#Graph, mtypes: Seq[MediaRange]): HttpResponse =
+		import akka.http.scaladsl.model.StatusCodes.OK
+		import run.cosy.http.RdfParser._
+		val tryResp = for {
+			highestMT <- highestPriortyRDFMediaType(mtypes)
+				.fold(Failure(Exception("We only support RDF media types for this resource")))(Success(_))
+			response <- toResponseEntity(graph, highestMT)
+		} yield HttpResponse(OK, entity=response)
+		tryResp match
+		case Success(res) => res
+		case Failure(res)	=> HttpResponse(StatusCodes.NotAcceptable, entity = HttpEntity(res.toString))
 
 }
 

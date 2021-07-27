@@ -22,7 +22,7 @@ case class TestCompiler(val ws: TestServer) {
 
 	def eval: SolidCmd ~> Id = new (SolidCmd ~> Id) {
 		def apply[A](cmd: SolidCmd[A]): Id[A] = cmd match
-			case Get(url, f) => ws.db.get(url) match
+			case Get(url, f) => ws.absDB.get(url) match
 				case Some(g) => f(Response(Meta(url, StatusCodes.OK, Seq()), Success(g)))
 				//todo: Create an exception for this that can be re-used
 				case None => f(Response(Meta(url, StatusCodes.NotFound, Seq()), Failure(new Exception("no content"))))

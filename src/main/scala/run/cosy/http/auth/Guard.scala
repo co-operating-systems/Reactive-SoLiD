@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.{HttpMethod, Uri}
 import org.w3.banana.{PointedGraphs, WebACLPrefix}
 import run.cosy.ldp.SolidCmd.ReqDataSet
 import akka.actor.typed.scaladsl.ActorContext
+import akka.http.scaladsl.model.headers.{Link, LinkParam, LinkParams}
 import run.cosy.ldp.Messages.CmdMessage
 
 import java.util.concurrent.TimeUnit
@@ -52,8 +53,8 @@ object Guard {
 		def ac = (rules / wac.agentClass).exists{ pg =>
 			pg.pointer == foaf.Agent // || todo: fill in authenticated agent, and groups
 		}
+		def agents = rules / wac.agent
 		def ag = {
-			def agents = rules / wac.agent
 			agent match
 			case WebIdAgent(id) =>
 				val webId = id.toRdf
@@ -84,7 +85,7 @@ object Guard {
 		val rules: PointedGraphs[Rdf] = PointedGraph[Rdf](wac.Authorization, acRulesGraph) /- rdf.`type`
 		//todo: add filter to banana-rdf
 		val it: Iterable[Rdf#Node] = rules.nodes.filter { (node: Rdf#Node) =>
-			modesFor(operation).exists(mode => acRulesGraph.find(node, wac.mode, mode).hasNext) &&
+			modesFor(operation).exists(mode => acRulesGraph.select(node, wac.mode, mode).hasNext) &&
 				(acRulesGraph.select(node, wac.accessTo, targetRsrc).hasNext ||
 					acRulesGraph.select(node, wac.default, ANY).exists { (tr: Rdf#Triple) =>
 						tr.objectt.fold(u => u.toAkka.ancestorOf(target), x => false, z => false)
@@ -105,10 +106,11 @@ object Guard {
 		import akka.actor.typed.Behavior
 		for {
 			reqDS <- fetchWithImports(aclUri)
-		} yield
-			method match
-				case m: GMethod => authorize(unionAll(reqDS), agent, target, m)
-				case _ => false
+		} yield method match
+			case m: GMethod => authorize(unionAll(reqDS), agent, target, m)
+			case _ => false
+
+	def aclLink(acl: Uri): Link = Link(acl,LinkParams.rel("acl"))
 
 	/** we authorize the top command `msg` - it does not really matter what T the end result is. */
 	def Authorize[T](msg: CmdMessage[T], aclUri: Uri)(using
@@ -141,12 +143,12 @@ object Guard {
 					case Success(false) =>
 						context.log.info(s"failed to authorize ${msg.target} ")
 						msg.respondWithScr(HttpResponse(StatusCodes.Unauthorized,
-							Seq(`WWW-Authenticate`(HttpChallenge("Signature",s"${msg.target}")))
+							Seq(aclLink(aclUri),`WWW-Authenticate`(HttpChallenge("Signature",s"${msg.target}")))
 					))
 					case Failure(e) =>
 						context.log.info(s"Unable to authorize ${msg.target}: $e ")
 						msg.respondWithScr(HttpResponse(StatusCodes.Unauthorized,
-							Seq(`WWW-Authenticate`(HttpChallenge("Signature",s"${msg.target}"))),
+							Seq(aclLink(aclUri),`WWW-Authenticate`(HttpChallenge("Signature",s"${msg.target}"))),
 							HttpEntity(ContentTypes.`text/plain(UTF-8)`,e.getMessage))
 					)
 				}

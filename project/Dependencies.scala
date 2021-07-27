@@ -7,7 +7,7 @@ object Dependencies {
 
 	object Versions {
 		val Akka               = "2.6.15"
-		val AkkaHttp           = "10.2.4"
+		val AkkaHttp           = "10.2.5"
 		val scalaz             = "7.4.0-M7"
 		val circe              = "0.14.0-M4"
 		val banana             = "0.8.6-SNAPSHOT"
@@ -76,7 +76,8 @@ object Dependencies {
 		 */
 		val banana = Seq(
 			"net.bblfish.rdf" % "banana-rdf" % V.banana,
-			"net.bblfish.rdf" % "banana-jena" % V.banana
+			"net.bblfish.rdf" % "banana-jena" % V.banana,
+			"net.bblfish.rdf" %% "banana-rdf4j" % V.banana
 		)
 
 

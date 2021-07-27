@@ -44,7 +44,7 @@ class LDPCmdTest extends munit.FunSuite {
 		//check that the output is the same as the full info on the server
 		//note this does not keep the structure
 		val namedGraphs = ds.coflatMap(toNG).foldLeft[List[(Uri, Rdf#Graph)]](List())((l, b) => b.value :: l)
-		assertEquals(Map(namedGraphs.toSeq *), ts.db - ts.path("/People/.acl"))
+		assertEquals(Map(namedGraphs.toSeq *), ts.absDB - ts.path("/People/.acl"))
 
 		//build the graphs Data structure for the altered server
 		val ds2: ReqDataSet = fetchWithImports(ts2.path("/People/Berners-Lee/card.acl")).foldMap(compiler2.eval)
@@ -53,7 +53,7 @@ class LDPCmdTest extends munit.FunSuite {
 		assertEquals(Map(ds2
 			.coflatMap(toNG)
 			.foldLeft[List[(Uri, Rdf#Graph)]](List())((l, b) => b.value :: l)
-			.toSeq *), ts2.db)
+			.toSeq *), ts2.absDB)
 
 
 		import cats.Now

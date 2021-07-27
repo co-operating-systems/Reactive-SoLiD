@@ -1,5 +1,3 @@
-// no longer needed with sbt 1.5.0
-//addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.5.3")
 
 /**
  * ScalaJS cross project sbt plugin

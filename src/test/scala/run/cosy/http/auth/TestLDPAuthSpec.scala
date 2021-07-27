@@ -108,7 +108,7 @@ class TestSolidLDPAuthSpec extends AnyWordSpec with Matchers with ScalatestRoute
 			val test = new SolidTestPost(solid,WebServerAgent)
 
 			info("create a new </key> with POST")
-			val gtoSendTry: scala.util.Try[String] = turtleWriter.asString(keyGraph,"")
+			val gtoSendTry: scala.util.Try[String] = turtleWriter.asString(keyGraph,None)
 			assert(gtoSendTry.isSuccess)
 
 			val newUri = test.newResource(rootC, Slug("key"), `text/turtle`.toContentType, gtoSendTry.get)

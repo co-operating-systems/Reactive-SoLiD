@@ -168,6 +168,7 @@ object BasicContainer {
 		LinkValue(ldp.BasicContainer.toAkka, LinkParams.rel("type")),
 		LinkValue(ldp.Resource.toAkka, LinkParams.rel("type"))
 	)
+
 	val AllowHeader =
 		import HttpMethods._
 		Allow(GET,POST,DELETE,HEAD,OPTIONS)
@@ -307,6 +308,7 @@ class BasicContainer private(
 	// url for resource with `name` in this container
 	def urlFor(name: String): Uri = containerUrl.withPath(containerUrl.path / name)
 	lazy val aclUri: Uri              = containerUrl.withPath(containerUrl.path?/".acl")
+	lazy val aclHeader = Link(aclUri,LinkParams.rel("acl"))
 //	lazy val dotLinkName: DotFileName = DotFileName(linkName)
 
 	/** Return a Source for reading the relevant files for this directory.
@@ -575,13 +577,13 @@ class BasicContainer private(
 					//todo: I don't think this takes account of priorities. Check
 					if req.headers[Accept].exists(_.mediaRanges.exists(_.matches(`text/turtle`))) then
 						pcmd.respondWith(HttpResponse(
-							OK, LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
+							OK, aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
 							HttpEntity (`text/turtle`.toContentType,
 							Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_)).map(s => ByteString(s)))
 						))
 					else
 						pcmd.respondWith(HttpResponse(
-							UnsupportedMediaType, LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
+							UnsupportedMediaType, aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
 							HttpEntity("We only support text/turtle media type at the moment")
 						))
 					Behaviors.same
@@ -634,7 +636,7 @@ class BasicContainer private(
 						pcmd.respondWith(HttpResponse(NoContent, Seq(), entity = s"resource deleted"))
 						Behaviors.stopped
 					else
-						pcmd.respondWith(HttpResponse(Conflict, LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
+						pcmd.respondWith(HttpResponse(Conflict, aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
 							entity = HttpEntity (`text/turtle`.toContentType,
 								Source.combine(ttlPrefix, dirList.map (containsAsTurtle) )(Concat (_) )
 									.map (s => ByteString (s) ) ))

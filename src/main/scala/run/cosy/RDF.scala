@@ -14,8 +14,8 @@ import org.w3.banana.FOAFPrefix
  *
  **/
 object RDF {
-	export Jena._
-	export Jena.given
+	export org.w3.banana.rdf4j.Rdf4j._
+	export org.w3.banana.rdf4j.Rdf4j.given
 
 	extension (uri: Uri)
 		def toRdf: Rdf#URI = ops.URI(uri.toString)

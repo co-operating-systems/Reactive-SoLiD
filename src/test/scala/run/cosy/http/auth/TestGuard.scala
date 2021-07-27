@@ -25,15 +25,16 @@ class TestGuard extends munit.FunSuite {
 	val podRdfAcl = rootAcl.toRdf
 
 	val owner = (ws.base / "owner").withFragment("i")
+	val OwnerAgent = WebIdAgent(owner)
 
 	val timBlSpace =  ws.base / "People" /"Berners-Lee" /""
 	val timBlCardUri =  ws.base / "People" /"Berners-Lee" / "card"
 	val timBl = timBlCardUri.withFragment("i")
 
 	test("test access to resources using root container ACL") {
-		val aclGraph = ws.db(rootAcl)
-		assertEquals(Guard.filterRulesFor(aclGraph, rootUri, GET).nodes.toList,
-			List(podRdfAcl.withFragment("Public"), podRdfAcl.withFragment("Admin")))
+		val aclGraph = ws.absDB(rootAcl)
+		assertEquals(Guard.filterRulesFor(aclGraph, rootUri, GET).nodes.toSet,
+			Set(podRdfAcl.withFragment("Public"), podRdfAcl.withFragment("Admin")))
 		val answer = Guard.authorizeScript(rootAcl, new Anonymous(), rootUri, GET).foldMap(aclBasic.eval)
 		assert(answer, "The root acl allows all contents to be READable")
 
@@ -51,6 +52,20 @@ class TestGuard extends munit.FunSuite {
 
 		val answer4 = Guard.authorizeScript(rootAcl, new Anonymous(), timBlCardUri, PUT).foldMap(aclBasic.eval)
 		assert(!answer4, "The root rule applies by default to Tim Berners-Lee's card, disallowing PUT by anonymous")
+	}
+
+	val indexACL = (ws.base / "index.acl")
+	val index = (ws.base / "index")
+
+	test("test access to /index ") {
+		val aGet = Guard.authorizeScript(indexACL, Anonymous(), index, GET).foldMap(aclBasic.eval)
+		assert(aGet, "/index is readable by all")
+		val aPost = Guard.authorizeScript(indexACL, Anonymous(), index, POST).foldMap(aclBasic.eval)
+		assert(!aPost, "/index cannot be appended to by just anyone")
+		val ownerPost = Guard.authorizeScript(indexACL, OwnerAgent, rootUri, POST).foldMap(aclBasic.eval)
+		assert(ownerPost, "owner should be able to create resources on /")
+		val ownerGet = Guard.authorizeScript(indexACL, OwnerAgent, index, GET).foldMap(aclBasic.eval)
+		assert(ownerPost, "owner can read the resource he created eg. /index")
 	}
 
 	val HR = (ws.base / "People" / "HR").withFragment("i")
@@ -101,12 +116,14 @@ class TestGuard extends munit.FunSuite {
 		import importsDL.ws
 		val rootAcl = ws.base / ".acl"
 		val rootUri = ws.base / ""
-
+		println(s"rootUri=$rootUri")
+		
 		val podRdf    = ws.base.toRdf
 		val podRdfAcl = rootAcl.toRdf
 
-		val aclGraph = ws.db(rootAcl)
-		assertEquals(Guard.filterRulesFor(aclGraph, rootUri, GET).nodes.toList, List(podRdfAcl.withFragment("Public")))
+		val aclGraph = ws.absDB(rootAcl)
+		println("aclGrpah = "+aclGraph)
+		assertEquals(Guard.filterRulesFor(aclGraph, rootUri, GET).nodes.toSet, Set(podRdfAcl.withFragment("Public")))
 		val answer = Guard.authorizeScript(rootAcl, new Anonymous(), rootUri, GET).foldMap(importsDL.eval)
 		assert(answer, true)
 	}

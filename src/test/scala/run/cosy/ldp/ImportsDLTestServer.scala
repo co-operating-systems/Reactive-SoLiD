@@ -5,6 +5,8 @@ import cats.free.Cofree
 import org.apache.jena.riot.lang.RiotParsers
 import run.cosy.RDF
 import run.cosy.RDF.Prefix.wac
+import run.cosy.ldp.BasicACLTestServer.base
+import run.cosy.ldp.ConnectedImportsDLTestServer.base
 import run.cosy.ldp.ImportsDLTestServer.{BLAcl, db}
 import run.cosy.ldp.SolidCmd.*
 
@@ -70,6 +72,7 @@ object ImportsDLTestServer extends TestServer:
 		path("/People/Berners-Lee/.acl") -> BLAcl,
 		path("/People/Berners-Lee/card.acl") -> cardAcl
 	)
+	
 
 end ImportsDLTestServer
 
@@ -83,4 +86,5 @@ object ConnectedImportsDLTestServer extends TestServer:
 	)
 
 	val db = ImportsDLTestServer.db + (path("/People/Berners-Lee/.acl") -> BLAcl2)
+	
 end ConnectedImportsDLTestServer

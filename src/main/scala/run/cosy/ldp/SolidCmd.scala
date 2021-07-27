@@ -187,9 +187,10 @@ object SolidCmd {
 
 	/*
 	 * Graph Functor -- modelled on tpolecat's ProfF example
-	 * Todo: look into what other functor would be more interesting for other:
+	 * Todo: look into what other functor would be more interesting Functor for other:
 	 * a HashMap, a Graph?
 	 * todo: We use List here, as I can't figure out how to get CommutativeTraverse to Work for Set
+	 *
 	 **/
 	case class GraF[A](graph: Rdf#Graph, other: List[A] = List())
 
