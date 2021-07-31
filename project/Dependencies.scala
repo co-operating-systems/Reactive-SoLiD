@@ -17,6 +17,8 @@ object Dependencies {
 		val catsParse          = "0.3.4"
 		val catsCore           = "2.6.1"
 		val catsFree           = catsCore
+		val munit 				  = "0.7.27"
+		val disciplineMunit    = "1.0.9"
 		val catsEffect         = "3.1.1"
 		val scalatest          = "3.2.9"
 		val titaniumJSonLD     = "1.0.0"
@@ -119,7 +121,15 @@ object Dependencies {
 		 * @see https://github.com/typelevel/cats
 		 * */
 		val catsCore = "org.typelevel" %% "cats-core" % V.catsCore
-
+		
+		/**
+		 * MIT License
+		 *
+		 * @see https://mvnrepository.com/artifact/org.typelevel/cats-laws
+		 * @see https://github.com/typelevel/cats
+		 * */
+		val catsLaws = "org.typelevel" %% "cats-laws" % V.catsCore % Test
+		
 		/**
 		 * MIT License
 		 *
@@ -139,14 +149,22 @@ object Dependencies {
 		val izumiReflect = "dev.zio" %% "izumi-reflect" % V.izumiReflect
 
 		/**
+		 * BSD-3 Clause License https://opensource.org/licenses/BSD-3-Clause
+		 *
+		 * @see [[https://scalameta.org/munit/docs/getting-started.html Getting Started]]
+		 * @see https://mvnrepository.com/artifact/org.scalameta/munit
+		 */
+		val munit = "org.scalameta" %% "munit" % V.munit % Test
+		
+		/**
 		 * Apache 2 License
 		 *
 		 * @see [[https://scalameta.org/munit/docs/getting-started.html Getting Started]]
 		 * @see https://mvnrepository.com/artifact/org.scalameta/munit
 		 */
-		val munit = "org.scalameta" %% "munit" % "0.7.25" % Test
-
-		val all = Seq(scalatest, munit, catsParse, catsCore, catsFree, izumiReflect)
+		val disciplineMunit = "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test
+		
+		val all = Seq(catsParse, catsCore, catsFree, izumiReflect, scalatest, munit, disciplineMunit, catsLaws)
 	}
 
 	//
