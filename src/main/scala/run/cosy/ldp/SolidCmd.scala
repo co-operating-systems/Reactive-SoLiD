@@ -5,6 +5,8 @@ import akka.stream.Materializer
 import cats.{Applicative, Now}
 import cats.free.{Cofree, Free}
 import cats.free.Free.liftF
+import alleycats.std.set.*
+import cats.kernel.CommutativeMonoid
 import org.apache.jena.sparql.core.NamedGraph
 import run.cosy.RDF
 import run.cosy.RDF.*
@@ -15,7 +17,7 @@ import scala.util.{Success, Try}
 
 
 /**
- * Commands on the Server. All commands are executed agains on a resource
+ * Commands on the Server. All commands are executed on a resource
  * named by a URL.
  */
 sealed trait SolidCmd[A]:
@@ -93,7 +95,7 @@ object SolidCmd {
 	//todo: if plain2 works, find better name (rename to plain above?).
 	def plain2(req: HttpRequest): SolidCmd[Script[HttpResponse]] = Plain(req, Free.pure[SolidCmd, HttpResponse])
 	//todo: The Wait does not have a URL to send it to (or does it always send it to the same actor?)
-
+	
 	/**
 	 * Build a Script to fetch owl:imports links starting from a graph at u, avoiding visted ones.
 	 * See [[https://github.com/solid/authorization-panel/issues/210 Issue 210 on :imports]], though here
@@ -109,17 +111,18 @@ object SolidCmd {
 		ngs: ReqDataSet <- response match
 			case Response(Meta(url, StatusCodes.OK, headers), Success(graph)) =>
 				import cats.syntax.all.toTraverseOps
-				val imports: List[Uri] = find(graph, ANY, owl.imports, ANY).toList.collect {
+				val imports: Set[Uri] = find(graph, ANY, owl.imports, ANY).toSet.collect {
 					case Triple(_, _, o: Rdf#URI) => o.toAkka
 				}
 				val newVisited = visited + u
-				val newImports = imports.filterNot(newVisited.contains(_))
+				val newImports: Set[Uri] = imports.filterNot(newVisited.contains(_))
 				val covered = newVisited ++ newImports
-				val lstOfScrpDs: List[Script[ReqDataSet]] = newImports.map(u => fetchWithImports(u, covered))
-				lstOfScrpDs.sequence.map(subs => Cofree(Meta(u), Now(GraF(graph, subs.toList))))
+				val scrptDs: Set[Script[ReqDataSet]] = newImports.map(u => fetchWithImports(u, covered))
+				val x: Script[Set[ReqDataSet]] = scrptDs.sequence
+				x.map(subs => Cofree(Meta(u), Now(GraF(graph, subs))))
 			case Response(meta, _) => //any other result is problematic for the moment.
 				//todo: pass more detailed error info into the result below - needed to explain problems
-				cats.free.Free.pure[SolidCmd, ReqDataSet](Cofree(meta, Now(GraF(Graph.empty, Nil))))
+				cats.free.Free.pure[SolidCmd, ReqDataSet](Cofree(meta, Now(GraF(Graph.empty,Set()))))
 	} yield ngs
 
 	/**
@@ -128,7 +131,7 @@ object SolidCmd {
 	 * @return
 	 */
 	def unionAll(ds: ReqDataSet): Rdf#Graph =
-		Cofree.cata[GraF,Meta,Rdf#Graph](ds)((_, d) => cats.Now(union(d.graph :: d.other))).value
+		Cofree.cata[GraF,Meta,Rdf#Graph](ds)((_, d) => cats.Now(union(d.other.toSeq :+ d.graph))).value
 
 	/**
 	 * Get request from URL, but the response should be interpreted to a
@@ -189,10 +192,10 @@ object SolidCmd {
 	 * Graph Functor -- modelled on tpolecat's ProfF example
 	 * Todo: look into what other functor would be more interesting Functor for other:
 	 * a HashMap, a Graph?
-	 * todo: We use List here, as I can't figure out how to get CommutativeTraverse to Work for Set
-	 *
+	 * We use a Set as the order in which we receive the other children is indeterminate,
+	 * and is often related to traversing the graph (which itself is a set like structure).
 	 **/
-	case class GraF[A](graph: Rdf#Graph, other: List[A] = List())
+	case class GraF[A](graph: Rdf#Graph, other: Set[A] = Set())
 
 	import cats.{Applicative, CommutativeApplicative, Eval, Traverse}
 	import cats.implicits.*
@@ -203,7 +206,7 @@ object SolidCmd {
 			case Get(url, k) => Get(url, k andThen f)
 			case Plain(req, k) => Plain(req, k andThen f)
 			case Wait(ftr, url, k) => Wait(ftr, url, k andThen f)
-
+	
 
 	given GraFTraverse: cats.Traverse[GraF] with
 		override

@@ -25,6 +25,6 @@ trait TestServer:
 	 * DB where the graphs ha	ve absolute URLs.
 	 * @return
 	 */
-	lazy val absDB = db.map{ case (uri,g) => uri -> g.resolveAgainst(base.toRdf) }
+	lazy val absDB: Map[Uri, Rdf#Graph] = db.map{ case (uri,g) => uri -> g.resolveAgainst(base.toRdf) }
 
 

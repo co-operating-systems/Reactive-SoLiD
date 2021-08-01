@@ -145,7 +145,15 @@ object Dependencies {
 		 * @see https://github.com/typelevel/cats-free
 		 * */
 		val catsFree = "org.typelevel" %% "cats-free" % V.catsFree
-
+		
+		/**
+		 * MIT License
+		 *
+		 * @see https://mvnrepository.com/artifact/org.typelevel/alleycats-core
+		 * @see https://github.com/typelevel/cats
+		 * */
+		val alleyCats = "org.typelevel" %% "alleycats-core" % V.catsCore
+		
 		val izumiReflect = "dev.zio" %% "izumi-reflect" % V.izumiReflect
 
 		/**
@@ -164,7 +172,10 @@ object Dependencies {
 		 */
 		val disciplineMunit = "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test
 		
-		val all = Seq(catsParse, catsCore, catsFree, izumiReflect, scalatest, munit, disciplineMunit, catsLaws)
+		val all = Seq(
+			catsParse, catsCore, catsFree, alleyCats, catsLaws,
+			izumiReflect,
+			scalatest, munit, disciplineMunit)
 	}
 
 	//
