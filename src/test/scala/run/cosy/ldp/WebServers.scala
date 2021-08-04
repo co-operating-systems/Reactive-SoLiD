@@ -4,5 +4,5 @@ package run.cosy.ldp
 object WebServers {
 	val importsDL       : TestCompiler = TestCompiler(ImportsDLTestServer)
 	val connectedImports: TestCompiler = TestCompiler(ConnectedImportsDLTestServer)
-	val aclBasic        : TestCompiler = TestCompiler(BasicACLTestServer)
+	val aclBasic        : TestCompiler = TestCompiler(BasicACLTestServerW3C)
 }

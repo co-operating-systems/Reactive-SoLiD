@@ -30,20 +30,29 @@ class TestGuard extends munit.FunSuite {
 	val timBlSpace =  ws.base / "People" /"Berners-Lee" /""
 	val timBlCardUri =  ws.base / "People" /"Berners-Lee" / "card"
 	val timBl = timBlCardUri.withFragment("i")
-
+	// "http://localhost:8080/Hello_6"
 	test("test access to resources using root container ACL") {
 		val aclGraph = ws.absDB(rootAcl)
 		assertEquals(Guard.filterRulesFor(aclGraph, rootUri, GET).nodes.toSet,
 			Set(podRdfAcl.withFragment("Public"), podRdfAcl.withFragment("Admin")))
 		val answer = Guard.authorizeScript(rootAcl, new Anonymous(), rootUri, GET).foldMap(aclBasic.eval)
 		assert(answer, "The root acl allows all contents to be READable")
-
+		
+		val answer2 = Guard.authorizeScript(rootAcl, new Anonymous(), ws.base/"Hello_6", GET).foldMap(aclBasic.eval)
+		assert(answer2, "The root acl allows all contents to be READable")
+		
 		assert(!Guard.authorize(aclGraph,Anonymous(),rootUri,POST), "Anonymous should not have POST access")
 		val answer2Post = Guard.authorizeScript(rootAcl, Anonymous(), rootUri, POST).foldMap(aclBasic.eval)
 		assert(!answer2Post, "Anonymous should not have POST access to root container" )
-
+		
+		val rootACLGET2 = Guard.authorizeScript(rootAcl, WebIdAgent(owner), rootAcl, GET).foldMap(aclBasic.eval)
+		assert(rootACLGET2, "The owner should have read access to root container acl as he has Control rights.")
+		
+		val rootACLPUT2 = Guard.authorizeScript(rootAcl, WebIdAgent(owner), rootAcl, PUT).foldMap(aclBasic.eval)
+		assert(rootACLPUT2, "The owner should have Edit access to root container acl as he has Control rights.")
+		
 		val answer2Post2 = Guard.authorizeScript(rootAcl, WebIdAgent(owner), rootUri, POST).foldMap(aclBasic.eval)
-		assert(answer2Post2, "The owner should have POST access to root container" )
+		assert(answer2Post2, "The owner should have POST access to root container.")
 		
 		val answer3 = Guard.authorizeScript(rootAcl, new Anonymous(), timBlCardUri, GET).foldMap(aclBasic.eval)
 		assert(answer3, "Anyone can read Tim Berners-Lee's card")
@@ -89,7 +98,7 @@ class TestGuard extends munit.FunSuite {
 		assert(aPost4, "HR would have access to TimBL's space, if his ACL imported the /People/.acl")
 
 		val aPost5 = Guard.authorizeScript(PeopleAcl, WebIdAgent(timBl), PeopleCol, POST).foldMap(aclBasic.eval)
-		assert(!aPost5, "TimBL does not access to create resources in the /People/ space")
+		assert(!aPost5, "TimBL does not have access to create resources in the /People/ space")
 
 	}
 
@@ -116,13 +125,11 @@ class TestGuard extends munit.FunSuite {
 		import importsDL.ws
 		val rootAcl = ws.base / ".acl"
 		val rootUri = ws.base / ""
-		println(s"rootUri=$rootUri")
 		
 		val podRdf    = ws.base.toRdf
 		val podRdfAcl = rootAcl.toRdf
 
 		val aclGraph = ws.absDB(rootAcl)
-		println("aclGrpah = "+aclGraph)
 		assertEquals(Guard.filterRulesFor(aclGraph, rootUri, GET).nodes.toSet, Set(podRdfAcl.withFragment("Public")))
 		val answer = Guard.authorizeScript(rootAcl, new Anonymous(), rootUri, GET).foldMap(importsDL.eval)
 		assert(answer, true)

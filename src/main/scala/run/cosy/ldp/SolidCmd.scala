@@ -70,7 +70,7 @@ object SolidCmd {
 
 		import scala.util.Failure
 		for {
-			resp <- SolidCmd.plain(RdfParser.rdfRequest(url))
+			resp <- SolidCmd.plainScript(RdfParser.rdfRequest(url))
 			tryResp <- resp.status match
 				case good: StatusCodes.Success =>
 					val fg: Future[IResponse[Rdf#Graph]] = RdfParser.unmarshalToRDF(resp, url)
@@ -87,14 +87,13 @@ object SolidCmd {
 			))
 		} yield x
 
-	def plain(req: HttpRequest): Script[HttpResponse] = liftF[SolidCmd, HttpResponse](Plain(req, identity))
-
+	def plainScript(req: HttpRequest): Script[HttpResponse] = liftF[SolidCmd, HttpResponse](Plain(req, identity))
+	
+	//todo: The Wait does not have a URL to send it to (or does it always send it to the same actor?)
 	def wait[A](ftr: Future[A], target: Uri): Script[Try[A]] =
 		liftF[SolidCmd, Try[A]](Wait(ftr, target, identity))
 
-	//todo: if plain2 works, find better name (rename to plain above?).
-	def plain2(req: HttpRequest): SolidCmd[Script[HttpResponse]] = Plain(req, Free.pure[SolidCmd, HttpResponse])
-	//todo: The Wait does not have a URL to send it to (or does it always send it to the same actor?)
+	def plain(req: HttpRequest): SolidCmd[Script[HttpResponse]] = Plain(req, Free.pure[SolidCmd, HttpResponse])
 	
 	/**
 	 * Build a Script to fetch owl:imports links starting from a graph at u, avoiding visted ones.

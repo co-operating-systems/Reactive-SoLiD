@@ -92,7 +92,7 @@ object RdfParser {
 	def response(graph: Rdf#Graph, mtypes: Seq[MediaRange]): HttpResponse =
 		import akka.http.scaladsl.model.StatusCodes.OK
 		import run.cosy.http.RdfParser._
-		val tryResp = for {
+		val tryResp: Try[HttpResponse] = for {
 			highestMT <- highestPriortyRDFMediaType(mtypes)
 				.fold(Failure(Exception("We only support RDF media types for this resource")))(Success(_))
 			response <- toResponseEntity(graph, highestMT)

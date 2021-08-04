@@ -165,8 +165,8 @@ object BasicContainer {
 		}
 
 	val LinkHeaders = Link(
-		LinkValue(ldp.BasicContainer.toAkka, LinkParams.rel("type")),
-		LinkValue(ldp.Resource.toAkka, LinkParams.rel("type"))
+		LinkValue(ldp.BasicContainer.toAkka, rel("type")),
+		LinkValue(ldp.Resource.toAkka, rel("type")),
 	)
 
 	val AllowHeader =
@@ -592,7 +592,7 @@ class BasicContainer private(
 					import java.time.Clock
 					import BasicContainer.{createLinkNames, filterLDPTypeLinks,createNewResourceName,ldpBC,ldpr}
 					import BasicContainer.{given Clock}
-					val types = filterLDPTypeLinks(headers[Link])
+					val types = filterLDPTypeLinks(req.headers[Link])
 					if types.contains(ldpBC) then
 						//todo: should one also parse the body first to check that it is well formed? Or should that
 						//   be left to the created actor - which may have to delete itself if not.

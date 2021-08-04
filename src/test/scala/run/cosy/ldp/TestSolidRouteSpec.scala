@@ -33,9 +33,12 @@ import scala.concurrent.duration.DurationInt
 object TestSolidRouteSpec {
 	import akka.http.scaladsl.model.headers.LinkParams.*
 	val AccessControl = wac.accessControl.getString
+	
 	val rootUri: Uri = Uri("http://localhost:8080")
-	val relativeRootACL = run.cosy.ldp.BasicACLTestServer.rootACL
-	val rootACL = relativeRootACL.resolveAgainst(rootUri.toRdf)
+	val ServerData = BasicACLTestServer(rootUri)
+
+	val relativeRootACLGr: Rdf#Graph = ServerData.rootACL._2
+	val rootACLGr = ServerData.absDB(ServerData.rootACL._1)
 	val owner = rootUri.withPath(Uri.Path("/owner")).withFragment("i")
 
 	def aclLinkHeaders(link: Link): Seq[Uri] = link.values.collect {
@@ -146,11 +149,12 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
 		"Restarted. We now build up the ACLs and test again under different identities" in withServer { solid =>
 			val wsAgentClient = new SolidTestClient(solid, WebServerAgent)
 			val ownerClient = new SolidTestClient(solid,WebIdAgent(owner))
+			val anonClient = new SolidTestClient(solid,new Anonymous)
 			import LinkParams.*
 			import TestSolidRouteSpec.*
 
 			info("1. Edit default root acl.")
-			info("1.1 Get Container to find Link relation")
+			info("1.1 Get Container to find acl Link relation")
 			var rootAclUri: Uri = null
 
 			Req.Get(rootUri/"").withHeaders(Accept(`*/*`)) ~> solid.routeLdp(WebServerAgent) ~> check {
@@ -164,20 +168,17 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
 				rootAclUri = aclLinks.head
 			}
 
-			info("1.2 what is in the default graph? for the root, it should be nothing (may want to change that)")
+			info(s"1.2 fetch root ACL graph <$rootAclUri>? it should be empty")
 			Req.Get(rootAclUri).withHeaders(Accept(`text/turtle`)) ~> solid.routeLdp(WebServerAgent) ~> check {
 				status shouldEqual OK
 				given un: FromEntityUnmarshaller[Rdf#Graph] = RdfParser.rdfUnmarshaller(rootAclUri)
 				val g: Rdf#Graph = responseAs[Rdf#Graph]
 				//todo: but this is not a satisfactory response (minor)
-				assert(g.size == 0, "This currently contains the <.> imports <../.acl> which actually does not make sense." +
-					"There is not really a good reason there should be 1 triple here rather than 0. " +
-					"But in any case, before anything can be done, the root resource should have real content. " +
-					"Which is what we are going to add next.")
+				assert(g.size == 0, s"The root ACL should be empty on startup, but it is $g")
 			}
 
 			info("1.3 PUT new graph to ACL")
-			val aclTurtle = turtleWriter.asString(relativeRootACL,None).get
+			val aclTurtle = turtleWriter.asString(relativeRootACLGr, None).get
 			Req.Put(rootAclUri).withEntity(HttpEntity(`text/turtle`, aclTurtle)) ~>
 				solid.routeLdp(WebServerAgent) ~> check {
 				status shouldEqual OK
@@ -188,30 +189,14 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
 				status shouldEqual OK
 				given un: FromEntityUnmarshaller[Rdf#Graph] = RdfParser.rdfUnmarshaller(rootAclUri)
 				val g: Rdf#Graph = responseAs[Rdf#Graph]
-				assert(g isIsomorphicWith rootACL, "We should get the same graph as we just PUT to the server")
+				assert(g isIsomorphicWith rootACLGr, "We should get the same graph as we just PUT to the server")
+				info(s"info 1.4.1 test that $rootAclUri links to itself")
+				val linkOpt: Option[Link] = header[Link]
+				linkOpt shouldNot be(None)
+				aclLinkHeaders(linkOpt.get) should contain(rootAclUri)
 			}
-
-//			info("1.5 GET the new ACL (as Anonymous) and check isomorphism with what was placed there")
-			//todo: this is actually a bit more complex as it requires to think through acls of acls.
-//			Req.Get(rootAclUri).withHeaders(Accept(`text/turtle`)) ~>
-//				solid.routeLdp(Anonymous()) ~> check {
-//				status shouldEqual OK
-//				given un: FromEntityUnmarshaller[Rdf#Graph] = RdfParser.rdfUnmarshaller(rootAclUri)
-//				val g = responseAs[Rdf#Graph]
-//				println("--------------")
-//				println("having sent the relative graph")
-//				println(relativeRootACL)
-//				println("--------------")
-//				println("which gives the following Turtle")
-//				println(aclTurtle)
-//				println("--------------")
-//				println(s"GET <$rootAclUri> = $g")
-//				println(s"----------------")
-//				println(s"should have been= $rootACL")
-//				assert(ops.isomorphism(g,rootACL),"the graph fetched should be isomorphic to the one sent")
-//			}
-
-			info("1.6 Attempt and fail to Create a new Hello resource as Anaonymous")
+			
+			info("1.5 Attempt and fail to Create a new Hello resource as Anonymous")
 			Req.Post(rootC, HttpEntity("Testing security")).withHeaders(Slug("Test")) ~>
 				solid.routeLdp(Anonymous()) ~> check {
 				status shouldEqual Unauthorized
@@ -221,19 +206,30 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
 				aclLinks.size shouldEqual 1
 			}
 
-			info("create more resources with the same Slug(Hello) and GET them too - the deleted one is not overwritten")
+			info("1.6 create more resources with the same Slug(Hello) and GET them too - the deleted one is not overwritten")
 			for (count <- (6 to 9).toList) {
-				val createdUri = wsAgentClient.newResource(rootC, Slug("Hello"), s"Hello World $count!")
+				val createdUri = ownerClient.newResource(rootC, Slug("Hello"), s"Hello World $count!")
 				assert(createdUri.path.endsWith(s"Hello_$count"),s"path of <$createdUri> should end with 'Hello_$count'")
-				wsAgentClient.read(createdUri, s"Hello World $count!", 3)
+				val acl = createdUri.sibling(createdUri.fileName.get + ".acl")
+				info(s"Created <$createdUri>, try fetching its acl <$acl> next")
+				Req.Get(acl).withHeaders(Accept(`text/turtle`)) ~> solid.routeLdp(WebServerAgent) ~> check {
+					status shouldEqual OK
+					responseAs[String] shouldNot be("")
+					val linkOpt = header[Link]
+					linkOpt shouldNot be(None)
+					val aclLinks: Seq[Uri] = aclLinkHeaders(linkOpt.get)
+					aclLinks should contain(acl)
+				}
+				info(s"Read <$createdUri> as anonymous")
+				anonClient.read(createdUri, s"Hello World $count!", 2)
 			}
 
-//			info("create more blogs and GET them too with same slug. Numbering continues where it left off.")
-//			for (count <- (6 to 7).toList) {
-//				val blogDir = wsAgentClient.newContainer(rootC, Slug("blog"))
-//				blogDir shouldEqual toUri(s"/blog_$count/")
-//				//todo: read contents of dir to see contents added
-//			}
+			info("create more blogs and GET them too with same slug. Numbering continues where it left off.")
+			for (count <- (6 to 7).toList) {
+				val blogDir = wsAgentClient.newContainer(rootC, Slug("blog"))
+				blogDir shouldEqual toUri(s"/blog_$count/")
+				//todo: read contents of dir to see contents added
+			}
 		}
 	}
 

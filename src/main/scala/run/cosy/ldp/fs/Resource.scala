@@ -17,7 +17,7 @@ import org.eclipse.rdf4j.model.impl.DynamicModel
 import org.eclipse.rdf4j.rio.{RDFFormat, RDFWriter, Rio}
 import run.cosy.http.{FileExtensions, RDFMediaTypes, RdfParser}
 import run.cosy.http.auth.{KeyIdAgent, WebServerAgent}
-import run.cosy.ldp.ResourceRegistry
+import run.cosy.ldp.{ResourceRegistry, fs}
 import run.cosy.ldp.Messages.{Do, *}
 import run.cosy.ldp.fs.Resource.{StateSaved, connegNamesFor, extension, headersFor}
 import run.cosy.http.auth.KeyIdAgent
@@ -41,7 +41,7 @@ import java.io.{ByteArrayOutputStream, OutputStreamWriter, StringWriter}
 
 //import akka.http.scaladsl.model.headers.{RequestClientCertificate, `Tls-Session-Info`}
 
-object Resource {
+object Resource:
 
 	import akka.stream.Materializer
 	import run.cosy.RDF.Prefix.ldp
@@ -95,7 +95,8 @@ object Resource {
 			new Resource(rUri, linkName, context).behavior
 		}
 
-	def LDPR(uri: Uri): LinkValue = LinkValue(run.cosy.ldp.fs.BasicContainer.ldpr,LinkParams.rel("type"),LinkParams.anchor(uri))
+	def LDPR(uri: Uri): LinkValue =
+		LinkValue(run.cosy.ldp.fs.BasicContainer.ldpr, LinkParams.rel("type"), LinkParams.anchor(uri))
 
 	/** todo: language versions, etc...
 	 * */
@@ -111,9 +112,7 @@ object Resource {
 	/** change to wac.imports when available */
 	val defaultACLGraph: Rdf#Graph = (URI("") -- owl.imports ->- URI(".acl")).graph
 	val defaultACLGraphContainer: Rdf#Graph = (URI("") -- owl.imports ->- URI("../.acl")).graph
-
-
-}
+end Resource
 
 import run.cosy.ldp.fs.Resource.AcceptMsg
 import run.cosy.ldp.fs.BasicContainer.PostCreation
@@ -151,9 +150,7 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg]) exte
 		if !Files.exists(linkPath.resolveSibling(linkTo)) then Some(justCreatedBehavior)
 		else None
 
-	def VersionsInfo(lastVersion: Int, linkTo: FPath): VersionsInfo = new VersionsInfo(lastVersion,linkTo) {
-
-	}
+	def VersionsInfo(lastVersion: Int, linkTo: FPath): VersionsInfo = new VersionsInfo(lastVersion,linkTo) {}
 
 	/**
 	 * An LDPR created with POST is only finished when the content has downloaded (and potentially
@@ -185,7 +182,7 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg]) exte
 				Files.move(tmpSymLinkPath,linkPath,ATOMIC_MOVE)
 				val att = Files.readAttributes(pos, classOf[BasicFileAttributes])
 				cmd.respondWith(HttpResponse(Created,
-					Location(uri)::Link(LDPR(uri)::Nil)::AllowHeader::headersFor(att),
+					Location(uri)::Link(AclLink::LDPR(uri)::Nil)::AllowHeader::headersFor(att),
 					HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
 				))
 				behavior
@@ -222,7 +219,11 @@ object ACResource {
 
 }
 
-class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg]) extends ResourceTrait(uri,path,context) {
+/**
+ * Actor for Access Control resources, currently ".acl"
+ */
+class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
+	extends ResourceTrait(uri,path,context):
 	import run.cosy.ldp.fs.Resource.LDPR
 	import run.cosy.ldp.fs.Resource.AcceptMsg
 	//For container managed resources these are not appicable.
@@ -254,7 +255,8 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg]) extend
 	 *  - A request for NTrig returns the closure of the :imports relations of the resources
 	 *
 	 **/
-	def VersionsInfo(lastVersion: Int, linkTo: FPath): VersionsInfo = new VersionsInfo(lastVersion,linkTo) {
+	def VersionsInfo(lastVersion: Int, linkTo: FPath): VersionsInfo =
+	new VersionsInfo(lastVersion,linkTo):
 		import run.cosy.ldp.fs.BasicContainer.AcceptMsg
 		import run.cosy.ldp.SolidCmd
 
@@ -265,7 +267,7 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg]) extend
 		): Behavior[Resource.AcceptMsg] =
 			import run.cosy.ldp.SolidCmd.ReqDataSet
 			val mediaRanges: Seq[MediaRange] = req.headers[Accept].flatMap(_.mediaRanges)
-			context.log.info(s"--VersionInfo($lastVersion,$linkTo).doPlainGet(...) with mediaRanges = $mediaRanges")
+
 			def injectDataSetResponse(dataSetReq: ReqDataSet): SolidCmd.Script[A] =
 				import cats.free.Cofree
 				import org.apache.jena.query.Dataset
@@ -338,7 +340,6 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg]) extend
 			end injectDataSetResponse
 
 			if mediaRanges.exists(_.matches(`application/trig`)) then           //todo: select top ones first
-				context.log.info(s"------- we are writing request for Trig format")
 			  //todo: we may also want to restrict nquad behavior to the latest version, where it makes sense
 				import run.cosy.ldp.SolidCmd
 				import run.cosy.ldp.SolidCmd.{ReqDataSet, Script}
@@ -349,17 +350,18 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg]) extend
 					x <- injectDataSetResponse(dataSetReq)
 				} yield x
 				cmdmsg.continue(res)
-			else cmdmsg.respondWith(PlainGet(req))
+			else cmdmsg.respondWith(plainGet(req))
 			Behaviors.same
 
 
 		override
-		def PlainGet(req: HttpRequest): HttpResponse =
+		def plainGet(req: HttpRequest): HttpResponse =
 			//todo: avoid duplication of mediaRange calculation -- requires change of signature of overriden method.
 			val mediaRanges: Seq[MediaRange] = req.headers[Accept].flatMap(_.mediaRanges)
 			if lastVersion == 0 then
-				RdfParser.response(defaultGraph,mediaRanges).withHeaders(ACResource.VersionHeaders)
-			else super.PlainGet(req)
+				RdfParser.response(defaultGraph,mediaRanges)
+					.withHeaders(Link(AclLink)::ACResource.VersionHeaders)
+			else super.plainGet(req)
 
 
 		override def Put(cmd: CmdMessage[_]): Unit =
@@ -379,16 +381,15 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg]) extend
 		end Put
 		
 		def defaultGraph: Rdf#Graph =
-			if lastVersion == 0 && uri.path.container == Uri.Path./ then Graph.empty
-			else if linkTo.getFileName.toString.startsWith(".acl") then
-				Resource.defaultACLGraphContainer
+			if dotLinkName.isContainerAcl then
+				if uri.path.container == Uri.Path./ then
+					Graph.empty
+				else Resource.defaultACLGraphContainer
 			else
 				Resource.defaultACLGraph
 
-	}
-
-
-}
+	end VersionsInfo
+end ACResource
 
 /**
  * LDPR Actor extended with Access Control.
@@ -418,9 +419,11 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 	val linkName = linkPath.getFileName.toString
 	//todo. replace with DotFileName
 	final lazy val dotLinkName: Dot = Dot(linkName)
-	def aclName = linkName + ".acl"
+	// we have only one level of acls.
+	def aclName = if dotLinkName.isACR then linkName else linkName + ".acl"
 	val aclUri = uri.sibling(aclName)
-
+	def AclLink = LinkValue(aclUri,LinkParams.rel("acl"))
+	
 	var aclActorDB : Option[ActorRef[AcceptMsg]] =  None
 	def aclActor : ActorRef[AcceptMsg] = aclActorDB.getOrElse {
 		val acn = aclName
@@ -627,7 +630,6 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 			if v < lastVersion then LinkValue(versionUrl(v+1),LinkParams.rel("successor-version"))::Nil else Nil
 
 		def LatestVersion(): LinkValue = LinkValue(uri,LinkParams.rel("latest-version"))
-
 		def VersionLinks(v: Int): List[LinkValue] = LatestVersion()::(PrevVersion(v):::NextVersion(v))
 
 
@@ -647,7 +649,8 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 					Behaviors.same
 				case WannaDo(cmdmsg @ CmdMessage(commands, from, replyTo)) =>
 					//first we need to see if we need to route the Wannado
-					if dotLinkName.hasACR(cmdmsg.target.fileName.get) then aclActor ! msg
+					if (!dotLinkName.isACR) && dotLinkName.hasACR(cmdmsg.target.fileName.get) then
+						aclActor ! msg
 					else Guard.Authorize(cmdmsg,aclUri)
 					Behaviors.same
 				case Do(cmdmsg @ CmdMessage(cmd,agent,replyTo)) =>
@@ -706,7 +709,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 					//the upload failed, but we can return info about the current state
 					val att = Files.readAttributes(linkTo, classOf[BasicFileAttributes])
 					cmd.respondWith(HttpResponse(StatusCodes.InternalServerError,
-						Location(uri)::AllowHeader::Link(LDPR(uri)::VersionLinks(lastVersion))::headersFor(att),
+						Location(uri)::AllowHeader::Link(AclLink::LDPR(uri)::VersionLinks(lastVersion))::headersFor(att),
 						entity=HttpEntity("PUT unsucessful")
 					))
 					Behaviors.same
@@ -719,7 +722,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 					//todo: state saved should just return the VersionInfo.
 					val att = Files.readAttributes(fpath, classOf[BasicFileAttributes])
 					cmd.respondWith(HttpResponse(OK,
-							Location(uri)::AllowHeader::Link(LDPR(uri)::VersionLinks(lastVersion+1))::headersFor(att),
+							Location(uri)::AllowHeader::Link(AclLink::LDPR(uri)::VersionLinks(lastVersion+1))::headersFor(att),
 							HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
 					))
 					VersionsInfo(lastVersion+1,fpath).NormalBehavior
@@ -766,7 +769,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 
 			if imh.isEmpty && ium.isEmpty then
 				cmd.respondWith(HttpResponse(StatusCodes.PreconditionRequired,
-					Location(uri) :: AllowHeader :: Link(LDPR(uri) :: VersionLinks(lastVersion)) :: headersFor(att),
+					Location(uri) :: AllowHeader :: Link(AclLink::LDPR(uri) :: VersionLinks(lastVersion)) :: headersFor(att),
 					HttpEntity("LDP Servers requires valid `If-Match` or `If-Unmodified-Since` headers for a PUT")
 				))
 				return ()
@@ -781,7 +784,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 				}
 			if !(precond1 || (precond2.size > 0 && precond2.forall(_ == true))) then
 				cmd.respondWith(HttpResponse(StatusCodes.PreconditionFailed,
-					Location(uri) :: AllowHeader :: Link(LDPR(uri) :: VersionLinks(lastVersion)) :: headersFor(att),
+					Location(uri) :: AllowHeader :: Link(AclLink::LDPR(uri) :: VersionLinks(lastVersion)) :: headersFor(att),
 					HttpEntity("LDP Servers requires valid `If-Match` or `If-Unmodified-Since` headers for a PUT")
 				))
 				return ()
@@ -815,7 +818,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 				val attr = Files.readAttributes(path, classOf[BasicFileAttributes])
 				HttpResponse(
 					StatusCodes.OK,
-					lastModified(attr)::eTag(attr)::AllowHeader::Link(LDPR(uri)::VersionLinks(ver))::Nil,
+					lastModified(attr)::eTag(attr)::AllowHeader::Link(AclLink::LDPR(uri)::VersionLinks(ver))::Nil,
 					HttpEntity.Default(
 						akka.http.scaladsl.model.ContentType(mt, () => HttpCharsets.`UTF-8`),
 						path.toFile.length(),
@@ -833,10 +836,10 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 			cmdmsg: CmdMessage[A], req: HttpRequest,
 			f: HttpResponse => SolidCmd.Script[A]
 		): Behavior[Resource.AcceptMsg] =
-			cmdmsg.continue(f(PlainGet(req)))
+			cmdmsg.continue(f(plainGet(req)))
 			Behaviors.same
 
-		def PlainGet(req: HttpRequest): HttpResponse =
+		def plainGet(req: HttpRequest): HttpResponse =
 			val mt: MediaType = mediaType(linkTo)
 			val accMR: Seq[MediaRange] = req.headers[Accept].flatMap(_.mediaRanges)
 			context.log.info(s"PlainGet. accMR=$accMR")
@@ -861,7 +864,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 					entity=HttpEntity(`text/html(UTF-8)`,
 						s"requested content Types where $accMR but we only have $mt"
 					))
-		end PlainGet
+		end plainGet
 
 		/**
 		 * Specified in:

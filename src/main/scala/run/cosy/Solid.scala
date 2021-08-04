@@ -203,7 +203,7 @@ class Solid(
 
 		def routeWith(replyTo: ActorRef[HttpResponse]): LDP.Cmd = LDP.RouteMsg(
 				NonEmptyList.fromSeq("/",remaining.toSeq),
-				LDP.CmdMessage(SolidCmd.plain2(reqc.request), agent, replyTo)
+				LDP.CmdMessage(SolidCmd.plain(reqc.request), agent, replyTo)
 			).nextRoute
 
 		actor.ask[HttpResponse](routeWith).map(RouteResult.Complete(_))

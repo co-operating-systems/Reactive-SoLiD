@@ -5,7 +5,7 @@ import cats.free.Cofree
 import org.apache.jena.riot.lang.RiotParsers
 import run.cosy.RDF
 import run.cosy.RDF.Prefix.wac
-import run.cosy.ldp.BasicACLTestServer.base
+import run.cosy.ldp.BasicACLTestServerW3C.base
 import run.cosy.ldp.ConnectedImportsDLTestServer.base
 import run.cosy.ldp.ImportsDLTestServer.{BLAcl, db}
 import run.cosy.ldp.SolidCmd.*

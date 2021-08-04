@@ -22,9 +22,11 @@ trait TestServer:
 	def db: Map[Uri, Rdf#Graph]
 	
 	/**
-	 * DB where the graphs ha	ve absolute URLs.
+	 * DB where the graphs have absolute URLs.
 	 * @return
 	 */
-	lazy val absDB: Map[Uri, Rdf#Graph] = db.map{ case (uri,g) => uri -> g.resolveAgainst(base.toRdf) }
+	lazy val absDB: Map[Uri, Rdf#Graph] = db.map{
+		case (uri,g) => uri -> g.resolveAgainst(uri.resolvedAgainst(base).toRdf)
+	}
 
 

@@ -4,17 +4,23 @@ package run.cosy.ldp.fs
 object AsInt:
 	def unapply(ver: String): Option[Int] = ver.toIntOption
 
+object Dot:
+	val aclExt = "acl"
+	def split(name: String): List[String] = name.split('.').toList
+
 
 /**
  * Capture convention for Versioned Symbolic link file names.
- * Examples:
- * `card` -> `card.2.ttl`
- * `card.acl` -> `card.acl.3.ttl`
- * `.acl` -> `.acl.4.ttl`
+ * Examples of maps from base names to full representations:
+ *   - `card` -> `card.2.ttl`
+ *   - `card.acl` -> `card.acl.3.ttl`
+ *   - `.acl` -> `.acl.4.ttl`
  */
 class Dot(val baseName: String):
+	import Dot.*
 	lazy val parts: List[String] = split(baseName)
-
+	lazy val isContainerAcl: Boolean = parts.startsWith(List("",aclExt))
+	
 	object File:
 	/** return the version and extension for the file */
 		def unapply(name: String): Option[(Int, String)] =
@@ -34,9 +40,11 @@ class Dot(val baseName: String):
 			val remaining = fparts.drop(parts.size)
 			Some(remaining)
 		else None
+		
+	def isACR: Boolean = parts.lastOption.map(_ == aclExt).getOrElse(false)	
 
-	/** is the given pathName and acr of this resource (yes if it continues with ".acr" */
-	def hasACR(pathName: String): Boolean = remaining(pathName).flatMap(_.headOption.map(_ == "acl")).getOrElse(false)
+	/** is the given pathName an acr of this resource (yes if it continues with ".acl" */
+	def hasACR(pathName: String): Boolean =
+		remaining(pathName).flatMap(_.headOption.map(_ == aclExt)).getOrElse(false)
 
-	def split(name: String): List[String] = name.split('.').toList
-
+end Dot

@@ -61,7 +61,7 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
 		{
 			//create Hello
 			import _root_.run.cosy.http.Encoding.{given, *}
-			rootActr ! Messages.Do(CmdMessage(SolidCmd.plain2(
+			rootActr ! Messages.Do(CmdMessage(SolidCmd.plain(
 				HttpRequest(
 					POST,
 					rootUri.withPath(Uri.Path.SingleSlash),
@@ -79,7 +79,7 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
 			// Read Hello
 			rootActr ! Messages.RouteMsg(
 				NonEmptyList("Hello"),
-				CmdMessage(SolidCmd.plain2(
+				CmdMessage(SolidCmd.plain(
 				HttpRequest(
 					GET,
 					rootUri.withPath(Uri.Path / "Hello"),
