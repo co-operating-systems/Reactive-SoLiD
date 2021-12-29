@@ -14,16 +14,20 @@ import org.w3.banana.FOAFPrefix
  *
  **/
 object RDF {
-	export org.w3.banana.rdf4j.Rdf4j._
+	export org.w3.banana.rdf4j.Rdf4j.*
 	export org.w3.banana.rdf4j.Rdf4j.given
 
 	extension (uri: Uri)
 		def toRdf: Rdf#URI = ops.URI(uri.toString)
-		//inheritance of type projections does not work in Scala 3
+
+		//todo: inheritance of type projections does not work in Scala 3, so this is needed
 		def toRdfNode: Rdf#Node = ops.URI(uri.toString)
 
 	extension (rdfUri: Rdf#URI)
 		def toAkka: Uri = Uri(ops.getString(rdfUri))
+
+		//todo: inheritance of type projections does not work in Scala 3, so this is needed
+		def toNode: Rdf#Node = rdfUri.asInstanceOf[Rdf#Node]
 		
 	import org.w3.banana.binder.ToNode
 	import org.w3.banana.binder.ToNode.{given,_}
@@ -49,8 +53,10 @@ object RDF {
 		import org.w3.banana.{LDPPrefix, RDFPrefix, WebACLPrefix}
 		import run.cosy.http.auth.SecurityPrefix
 
+
 		val wac = WebACLPrefix[Rdf]
-		val rdf = RDFPrefix[Rdf]
+// rdf is imported in ops
+//		val rdf = RDFPrefix[Rdf]
 		val ldp = LDPPrefix[Rdf]
 		val foaf = FOAFPrefix[Rdf]
 		val security = SecurityPrefix[Rdf]

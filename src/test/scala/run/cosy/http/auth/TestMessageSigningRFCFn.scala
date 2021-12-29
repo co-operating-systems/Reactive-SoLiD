@@ -1,11 +1,11 @@
 package run.cosy.http.auth
 
 import akka.http.scaladsl.model.{DateTime, HttpEntity, HttpMessage, HttpMethods, HttpRequest, MediaTypes, Uri}
-import akka.http.scaladsl.model.headers.{`Cache-Control`, CacheDirectives, Date, GenericHttpCredentials, Host, RawHeader}
+import akka.http.scaladsl.model.headers.{CacheDirectives, Date, GenericHttpCredentials, Host, RawHeader, `Cache-Control`}
 import run.cosy.http.headers.{Rfc8941, SelectorOps, SigInput}
-import run.cosy.http.headers.{`Signature-Input`, SigInputs, Signature, Signatures,HttpSig}
-import Rfc8941._
-import Rfc8941.SyntaxHelper._
+import run.cosy.http.headers.{HttpSig, SigInputs, Signature, Signatures, `Signature-Input`}
+import Rfc8941.*
+import Rfc8941.SyntaxHelper.*
 import akka.http.scaladsl.util.FastFuture
 import com.nimbusds.jose.JWSAlgorithm
 
@@ -13,11 +13,11 @@ import scala.concurrent.{Await, Future}
 import run.cosy.http.headers.akka.{AkkaDictSelector, AkkaHeaderSelector, UntypedAkkaSelector}
 import run.cosy.http.headers.akka.{`@request-target`, `cache-control`, `content-length`, `content-type`, `digest`, date, etag, host}
 import run.cosy.http.headers.akka.date.collate
-import run.cosy.http.auth.MessageSignature._
-import run.cosy.ldp.testUtils.StringUtils._
+import run.cosy.http.auth.MessageSignature.*
+import run.cosy.ldp.testUtils.StringUtils.*
 
 import java.nio.charset.StandardCharsets
-import java.security.{KeyFactory, MessageDigest, Signature => JSignature}
+import java.security.{KeyFactory, MessageDigest, PrivateKey, PublicKey, Signature as JSignature}
 import java.security.spec.{PKCS8EncodedKeySpec, X509EncodedKeySpec}
 import java.time.Clock
 import java.util.Base64
@@ -537,7 +537,7 @@ object TestMessageSigningRFCFn {
 		  |S7Fnk6ZVVVHsxjtaHy1uJGFlaZzKR4AGNaUTOJMs6NadzCmGPAxNQQOCqoUjn4XR\
 		  |rOjr9w349JooGXhOxbu8nOxX""".rfc8792single
 
-	lazy val testKeyRSApub = {
+	lazy val testKeyRSApub: PublicKey = {
 		java.security.Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider)
 		import java.math.BigInteger
 		import java.security.spec.RSAPublicKeySpec
@@ -547,7 +547,7 @@ object TestMessageSigningRFCFn {
 		val keySpec = new RSAPublicKeySpec(modulus, publicExponent)
 		KeyFactory.getInstance("RSA").generatePublic(keySpec)
 	}
-	lazy val testKeyRSAPriv = {
+	lazy val testKeyRSAPriv: PrivateKey = {
 		KeyFactory.getInstance("RSA")
 			.generatePrivate(new PKCS8EncodedKeySpec(testKeyRSAprivStr.base64Decode.unsafeArray))
 	}
@@ -559,7 +559,7 @@ object TestMessageSigningRFCFn {
 	/** one always has to create a new signature on each verification if in multi-threaded environement */
 	def `rsa-pss-sha512`(): JSignature =
 //	   also tried see [[https://tools.ietf.org/html/rfc7518 JSON Web Algorithms (JWA) RFC]]
-//		com.nimbusds.jose.crypto.impl.RSASSA.getSignerAndVerifier(JWSAlgorithm.PS512, new BouncyCastleProvider() )
+//		com.nimbusds.jose.crypto.implRSASSA.getSignerAndVerifier(JWSAlgorithm.PS512, new BouncyCastleProvider() )
 		val rsapss = JSignature.getInstance("RSASSA-PSS")
 		import java.security.spec.{PSSParameterSpec, MGF1ParameterSpec}
 		val pssSpec = new PSSParameterSpec(

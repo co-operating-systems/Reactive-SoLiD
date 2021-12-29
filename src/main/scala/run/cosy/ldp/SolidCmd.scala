@@ -4,13 +4,15 @@ import akka.http.scaladsl.model.*
 import akka.stream.Materializer
 import cats.{Applicative, Now}
 import cats.free.{Cofree, Free}
-import cats.free.Free.liftF
+import cats.free.Free.{Pure, liftF}
 import alleycats.std.set.*
 import cats.kernel.CommutativeMonoid
 import org.apache.jena.sparql.core.NamedGraph
 import run.cosy.RDF
 import run.cosy.RDF.*
 import run.cosy.RDF.ops.*
+import run.cosy.ldp.rdf.LocatedGraphScriptExt.LocatedGraph
+import run.cosy.ldp.rdf.LocatedGraphs
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Success, Try}
@@ -51,6 +53,8 @@ object SolidCmd {
 	 * type RDataSet = GraF[Cofree[GraF, Meta]]
 	 */
 	type ReqDataSet = Cofree[GraF, Meta]
+
+	def pure[A](a: A): Script[A] = Free.pure(a)
 
 	def get(key: Uri): Script[Response] = liftF[SolidCmd, Response](Get[Response](key, identity))
 
@@ -129,7 +133,7 @@ object SolidCmd {
 	 * @param ds
 	 * @return
 	 */
-	def unionAll(ds: ReqDataSet): Rdf#Graph =
+	def unionAll(ds: ReqDataSet): LocatedGraphs.LGs =
 		Cofree.cata[GraF,Meta,Rdf#Graph](ds)((_, d) => cats.Now(union(d.other.toSeq :+ d.graph))).value
 
 	/**

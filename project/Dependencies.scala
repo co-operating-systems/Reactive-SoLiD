@@ -17,7 +17,7 @@ object Dependencies {
 		val catsParse          = "0.3.4"
 		val catsCore           = "2.6.1"
 		val catsFree           = catsCore
-		val munit 				  = "0.7.27"
+		val munit 				  = "0.7.28"
 		val disciplineMunit    = "1.0.9"
 		val catsEffect         = "3.1.1"
 		val scalatest          = "3.2.9"

@@ -6,6 +6,7 @@ import run.cosy.ldp.SolidCmd.ReqDataSet
 import akka.actor.typed.scaladsl.ActorContext
 import akka.http.scaladsl.model.headers.{Link, LinkParam, LinkParams}
 import run.cosy.ldp.Messages.CmdMessage
+import run.cosy.ldp.rdf.LocatedGraphs.{LGs, LocatedGraph, PtsLGraph, Pointed}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
@@ -21,7 +22,7 @@ object Guard {
 	import org.w3.banana.syntax.{GraphW, NodeW}
 	import run.cosy.RDF.*
 	import run.cosy.RDF.ops.*
-	import run.cosy.RDF.Prefix.{rdf, security, wac, foaf}
+	import run.cosy.RDF.Prefix.{security, wac, foaf}
 	import run.cosy.http.util.UriX.*
 	import run.cosy.ldp.Messages.{Do, ScriptMsg, WannaDo}
 	import run.cosy.ldp.SolidCmd.{fetchWithImports, unionAll, Get, Plain, Script, Wait}
@@ -35,37 +36,34 @@ object Guard {
 	 * Determine if an agent is authorized to request the operation on the target resource,
 	 * given the graph of ACL rules.
 	 *
-	 * Note that as discussed in [[https://github.com/solid/authorization-panel/discussions/223 Thinking in terms of proofs and Origins]]  a more sophisticated implementation may want to
-	 * also know more about the proof that `agent` is making the request: e.g. was the agent talking via
+	 * Note that as discussed in [[https://github.com/solid/authorization-panel/discussions/223 Thinking in terms of proofs and Origins]]
+	 * a more sophisticated implementation may want to also know more about the proof that `agent` is making the request: e.g. was the agent talking via
 	 * another Origin? We may also end up with not being given an Agent but a partial description of an Agent as given
 	 * by a certificate, and where one would need to verify if that partial description fit a rule.
 	 *
-	 * Here we assume all the data is in the queried graph. Which will lead to a lot of duplication.
-	 * More sophisticated rules, will require some data to be fetched outside the graph (such as to get foaf:knows relations)
-	 * foaf:group, agentClass, link from an acl?
-	 * To deal with those graphs correctly, we need a DataSet, but we may only want to fetch those
-	 * when needed, which indicates we may want to work with a Script[ReqDataSet]...
+	 * todo: Also the answer could be a richer proof object: perhaps one showing exactly which quads were
+	 * used to come to the conclusion. Even better: perhaps a sequence of steps that led from the rules
+	 * to the data would be better. Indeed it would be very important for debugging.
 	 *
-	 * Because this is all in one graph it could actually be implemented as a SPARQL query.
 	 */
-	def authorize(acg: Rdf#Graph, agent: Agent, target: Uri, operation: GMethod): Boolean =
+	def authorize(acg: LGs, agent: Agent, target: Uri, operation: GMethod): Script[Boolean] =
 		val rules = filterRulesFor(acg, target, operation)
-		def ac = (rules / wac.agentClass).exists{ pg =>
+		def ac: Boolean = (rules / wac.agentClass).exists{ pg =>
 			pg.pointer == foaf.Agent // || todo: fill in authenticated agent, and groups
 		}
 		def agents = rules / wac.agent
-		def ag = {
+		def groups = rules / wac.agentGroup
+		def ag: Boolean = {
 			agent match
 			case WebIdAgent(id) =>
 				val webId = id.toRdf
-				agents.exists{ _.pointer == webId }
+				agents.exists{ _.pointer == webId } 
 			case KeyIdAgent(keyId, _) =>
 				agents.exists(pg => pg.graph.select(keyId.toRdf, security.controller, pg.pointer).hasNext)
 			case _ => false
 		}
 		ac || ag
 	end authorize
-
 
 	/**
 	 * from a graph of rules, return a stream of pointers to the rules that apply to the given target
@@ -79,10 +77,10 @@ object Guard {
 	 *
 	 * @param acRulesGraph
 	 */
-	def filterRulesFor(acRulesGraph: Rdf#Graph, target: Uri, operation: GMethod): PointedGraphs[Rdf] =
+	def filterRulesFor(acRulesGraph: LGs, target: Uri, operation: GMethod): PtsLGraph =
 		val targetRsrc: Rdf#URI = target.toRdf
 		//we assume that all rules are typed
-		val rules: PointedGraphs[Rdf] = PointedGraph[Rdf](wac.Authorization, acRulesGraph) /- rdf.`type`
+		val rules: PtsLGraph = Pointed(wac.Authorization, acRulesGraph) /- rdf.`type`
 		//todo: add filter to banana-rdf
 		val it: Iterable[Rdf#Node] = rules.nodes.filter { (node: Rdf#Node) =>
 			modesFor(operation).exists(mode => acRulesGraph.select(node, wac.mode, mode).hasNext) &&
@@ -110,7 +108,7 @@ object Guard {
 			case m: GMethod => authorize(unionAll(reqDS), agent, target, m)
 			case _ => false
 
-	def aclLink(acl: Uri): Link = Link(acl,LinkParams.rel("acl"))
+	def aclLink(acl: Uri): Link = Link(acl, LinkParams.rel("acl"))
 
 	/** we authorize the top command `msg` - it does not really matter what T the end result is. */
 	def Authorize[T](msg: CmdMessage[T], aclUri: Uri)(using

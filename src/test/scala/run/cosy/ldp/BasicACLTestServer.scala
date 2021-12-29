@@ -35,7 +35,7 @@ case class BasicACLTestServer(base: Uri) extends TestServer:
 				-- wac.mode ->- (wac.Read, wac.Write)
 				-- wac.default ->- URI(".")
 		) union podGr(
-			URI(".") -- owl.imports ->- URI("/.acl")
+			URI("") -- owl.imports ->- URI("/.acl")
 		)
 	}
 
