@@ -1,8 +1,13 @@
+/*
+ * Copyright 2021 Henry Story
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package run.cosy.ldp.fs
 
 import akka.actor.typed.ActorRef
 import run.cosy.ldp.fs.Attributes.{DirAtt, SymLink, ManagedResource}
-
 
 sealed trait Ref
 

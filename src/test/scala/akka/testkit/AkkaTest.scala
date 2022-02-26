@@ -1,13 +1,13 @@
 /*
- * Copyright (C) 2009-2021 Lightbend Inc. <https://www.lightbend.com>
- * Copied and adapted from: 
- * https://github.com/akka/akka/blob/master/akka-testkit/src/test/scala/akka/testkit/AkkaSpec.scala
+ * Copyright 2021 Henry Story
+ *
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package akka.testkit
 
 import scala.concurrent.Future
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 import com.typesafe.config.Config
@@ -25,10 +25,10 @@ import akka.actor.ActorSystem
 import akka.dispatch.Dispatchers
 import akka.event.Logging
 import akka.event.LoggingAdapter
-import akka.testkit.TestEvent._
+import akka.testkit.TestEvent.*
 
-object AkkaSpec {
-	val testConf: Config = ConfigFactory.parseString("""
+object AkkaSpec:
+   val testConf: Config = ConfigFactory.parseString("""
       akka {
         loggers = ["akka.testkit.TestEventListener"]
         loglevel = "WARNING"
@@ -46,79 +46,76 @@ object AkkaSpec {
       }
       """)
 
-	def mapToConfig(map: Map[String, Any]): Config = {
-		import akka.util.ccompat.JavaConverters._
-		ConfigFactory.parseMap(map.asJava)
-	}
-
-}
+   def mapToConfig(map: Map[String, Any]): Config =
+      import akka.util.ccompat.JavaConverters.*
+      ConfigFactory.parseMap(map.asJava)
 
 abstract class AkkaSpec(_system: ActorSystem)
-	extends TestKit(_system)
-		with AnyWordSpecLike
-		with Matchers
-		with BeforeAndAfterAll
-		with WatchedByCoroner
-		with TypeCheckedTripleEquals
-		with ScalaFutures {
+    extends TestKit(_system)
+    with AnyWordSpecLike
+    with Matchers
+    with BeforeAndAfterAll
+    with WatchedByCoroner
+    with TypeCheckedTripleEquals
+    with ScalaFutures:
 
-	implicit val patience: PatienceConfig = PatienceConfig(testKitSettings.DefaultTimeout.duration, Span(100, Millis))
+   implicit val patience: PatienceConfig =
+     PatienceConfig(testKitSettings.DefaultTimeout.duration, Span(100, Millis))
 
-	def this(config: Config) =
-		this(
-			ActorSystem(
-				TestKitUtils.testNameFromCallStack(classOf[AkkaSpec], "".r),
-				ConfigFactory.load(config.withFallback(AkkaSpec.testConf))))
+   def this(config: Config) =
+     this(
+       ActorSystem(
+         TestKitUtils.testNameFromCallStack(classOf[AkkaSpec], "".r),
+         ConfigFactory.load(config.withFallback(AkkaSpec.testConf))
+       )
+     )
 
-	def this(s: String) = this(ConfigFactory.parseString(s))
+   def this(s: String) = this(ConfigFactory.parseString(s))
 
-	def this(configMap: Map[String, _]) = this(AkkaSpec.mapToConfig(configMap))
+   def this(configMap: Map[String, ?]) = this(AkkaSpec.mapToConfig(configMap))
 
-	def this() = this(ActorSystem(TestKitUtils.testNameFromCallStack(classOf[AkkaSpec], "".r), AkkaSpec.testConf))
+   def this() = this(ActorSystem(
+     TestKitUtils.testNameFromCallStack(classOf[AkkaSpec], "".r),
+     AkkaSpec.testConf
+   ))
 
-	val log: LoggingAdapter = Logging(system, Logging.simpleName(this))
+   val log: LoggingAdapter = Logging(system, Logging.simpleName(this))
 
-	override val invokeBeforeAllAndAfterAllEvenIfNoTestsAreExpected = true
+   override val invokeBeforeAllAndAfterAllEvenIfNoTestsAreExpected = true
 
-	final override def beforeAll(): Unit = {
-		startCoroner()
-		atStartup()
-	}
+   final override def beforeAll(): Unit =
+      startCoroner()
+      atStartup()
 
-	final override def afterAll(): Unit = {
-		beforeTermination()
-		shutdown()
-		afterTermination()
-		stopCoroner()
-	}
+   final override def afterAll(): Unit =
+      beforeTermination()
+      shutdown()
+      afterTermination()
+      stopCoroner()
 
-	protected def atStartup(): Unit = {}
+   protected def atStartup(): Unit = {}
 
-	protected def beforeTermination(): Unit = {}
+   protected def beforeTermination(): Unit = {}
 
-	protected def afterTermination(): Unit = {}
+   protected def afterTermination(): Unit = {}
 
-	def spawn(dispatcherId: String = Dispatchers.DefaultDispatcherId)(body: => Unit): Unit =
-		Future(body)(system.dispatchers.lookup(dispatcherId))
+   def spawn(dispatcherId: String = Dispatchers.DefaultDispatcherId)(body: => Unit): Unit =
+     Future(body)(system.dispatchers.lookup(dispatcherId))
 
-	override def expectedTestDuration: FiniteDuration = 60 seconds
+   override def expectedTestDuration: FiniteDuration = 60 seconds
 
-	def muteDeadLetters(messageClasses: Class[_]*)(sys: ActorSystem = system): Unit =
-		if (!sys.log.isDebugEnabled) {
-			def mute(clazz: Class[_]): Unit =
-				sys.eventStream.publish(Mute(DeadLettersFilter(clazz)(occurrences = Int.MaxValue)))
-			if (messageClasses.isEmpty) mute(classOf[AnyRef])
-			else messageClasses.foreach(mute)
-		}
+   def muteDeadLetters(messageClasses: Class[?]*)(sys: ActorSystem = system): Unit =
+     if !sys.log.isDebugEnabled then
+        def mute(clazz: Class[?]): Unit =
+          sys.eventStream.publish(Mute(DeadLettersFilter(clazz)(occurrences = Int.MaxValue)))
+        if messageClasses.isEmpty then mute(classOf[AnyRef])
+        else messageClasses.foreach(mute)
 
-	// for ScalaTest === compare of Class objects
-	implicit def classEqualityConstraint[A, B]: CanEqual[Class[A], Class[B]] =
-		new CanEqual[Class[A], Class[B]] {
-			def areEqual(a: Class[A], b: Class[B]) = a == b
-		}
+   // for ScalaTest === compare of Class objects
+   implicit def classEqualityConstraint[A, B]: CanEqual[Class[A], Class[B]] =
+     new CanEqual[Class[A], Class[B]]:
+        def areEqual(a: Class[A], b: Class[B]) = a == b
 
-	implicit def setEqualityConstraint[A, T <: Set[_ <: A]]: CanEqual[Set[A], T] =
-		new CanEqual[Set[A], T] {
-			def areEqual(a: Set[A], b: T) = a == b
-		}
-}
+   implicit def setEqualityConstraint[A, T <: Set[? <: A]]: CanEqual[Set[A], T] =
+     new CanEqual[Set[A], T]:
+        def areEqual(a: Set[A], b: T) = a == b
