@@ -48,9 +48,12 @@ object LocatedGraphs {
 	}
 
 	/**
-	 * Multi-Located Graphs. This results from unsigning a number of Named Graphs.
-	 * In a way a Named Graph NG is just a special case where the graph comes from only one
-	 * location, but that is the base case.
+	 * Multi-Located Graphs. This results from a union of a number of Named Graphs.<p>
+	 * The union of a number of named graphs does not come from one location but different locations.
+	 * A Named Graph NG is just a special case where the graph comes from only one
+	 * location.<p>
+	 * Potentially a more precise way to represent this would be to have a set of quads,
+	 * and for each triple have a way to find all the places those came from.
 	 * @param from each triple can come from one or more of these locations
 	 **/
 	case class LGs(from: Set[Rdf#URI], graph: Rdf#Graph) extends WithGraph, Located {
@@ -112,6 +115,7 @@ object LocatedGraphs {
  * Perhaps a generalisation to a Monad or such will be visible.
  *
  * Here I will add structures for using them with Scripts
+ * todo: better name for this object
  **/
 object LocatedGraphScriptExt {
 	import run.cosy.ldp.rdf.LocatedGraphs.{LG, Pointed, WithGraph}
@@ -119,28 +123,33 @@ object LocatedGraphScriptExt {
 	import LocatedGraphs.LocatedGraph
 	import SolidCmd.Script
 	import ops.{given,*}
-		//todo: we need to keep track of where we went, to avoid going back on our tracks.
-	// should we pass a cache around?
-	//todo: we also need to take care of redirects on remote resources
+
 	extension (pg: Pointed[LocatedGraph])
+		def exists(pgProperty: (Rdf#Node, Rdf#Graph) => Boolean): Boolean =
+			pg.points.exists(node => pgProperty(node,pg.ng.graph))
 
-		def jump: Script[Pointed[LocatedGraph]] =
-			pg.points.map{ point =>
-				pg.ng.ifLocal(point)(SolidCmd.pure(pg)) { uri =>
-					SolidCmd.get(uri.toAkka.withoutFragment).map{ resp =>
-						//todo: what should we do if we have a Failure?
-						//  we can indeed return "this" graph as done here, but
-						//  it feels like there should be a better answer.
-						//todo: also what if there is an error? Should we try again? How often?
-						//  these types of problems will appear again, and again: we need a library for that
-						//todo: Question: It may be better if we worked directly with the Response class
-						resp.content match
-							case Success(g) => Pointed(pg.point, NamedGraphs.LG(resp.meta.url.toRdf,g))
-							case _ => pg
-					}
-				}
-			}
-
+//todo: we need to keep track of where we went, to avoid going back on our tracks.
+// todo: worry about redirects
+// What is a jump on a Pointed[?] since there can be more than one point?
+// With a NamedPointedGraph there a jump could lead one to the remote graph at that point
+// but if one has a number of points one could end up in a number of graphs.
+// A Jump here would need to include the remote graphs
+//		def jump: Script[Pointed[LocatedGraph]] =
+//			pg.points.map{ point =>
+//				pg.ng.ifLocal(point)(SolidCmd.pure(pg)) { uri =>
+//					SolidCmd.get(uri.toAkka.withoutFragment).map{ resp =>
+//						//todo: what should we do if we have a Failure?
+//						//  we can indeed return "this" graph as done here, but
+//						//  it feels like there should be a better answer.
+//						//todo: also what if there is an error? Should we try again? How often?
+//						//  these types of problems will appear again, and again: we need a library for that
+//						//todo: Question: It may be better if we worked directly with the Response class
+//						resp.content match
+//							case Success(g) => Pointed(pg.points, LG(resp.meta.url.toRdf, g))
+//							case _ => pg
+//					}
+//				}
+//			}
 
 
 }

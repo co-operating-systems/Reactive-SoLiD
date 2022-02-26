@@ -2,7 +2,7 @@ package run.cosy
 
 import munit._
 import munit.Location._
-import akka.http.scaladsl.model.Uri
+import _root_.akka.http.scaladsl.model.Uri
 
 class SolidTest extends munit.FunSuite {
 	val root : Uri = Uri("https://ted.example")

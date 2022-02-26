@@ -11,8 +11,9 @@ import run.cosy.ldp.rdf.LocatedGraphs.{LGs, LocatedGraph, PtsLGraph, Pointed}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
 
-object Guard {
+object Guard:
 
+	import run.cosy.http.auth.WebIdAgent
 	import akka.actor.typed.scaladsl.Behaviors
 	import akka.http.scaladsl.model.HttpMethods.*
 	import akka.http.scaladsl.model.headers.{`WWW-Authenticate`, HttpChallenge}
@@ -27,6 +28,7 @@ object Guard {
 	import run.cosy.ldp.Messages.{Do, ScriptMsg, WannaDo}
 	import run.cosy.ldp.SolidCmd.{fetchWithImports, unionAll, Get, Plain, Script, Wait}
 	import run.cosy.ldp.SolidCmd
+	import run.cosy.ldp.rdf.LocatedGraphScriptExt.*
 
 	import scala.util.{Failure, Success}
 
@@ -46,28 +48,28 @@ object Guard {
 	 * to the data would be better. Indeed it would be very important for debugging.
 	 *
 	 */
-	def authorize(acg: LGs, agent: Agent, target: Uri, operation: GMethod): Script[Boolean] =
+	def authorize(acg: LGs, agent: Agent, target: Uri, operation: GMethod): Boolean =
 		val rules = filterRulesFor(acg, target, operation)
-		def ac: Boolean = (rules / wac.agentClass).exists{ pg =>
-			pg.pointer == foaf.Agent // || todo: fill in authenticated agent, and groups
+		def ac: Boolean = (rules / wac.agentClass).points.exists{
+			_ == foaf.Agent // || todo: fill in authenticated agent and groups
 		}
-		def agents = rules / wac.agent
-		def groups = rules / wac.agentGroup
+		def agents: Pointed[LocatedGraph] = rules / wac.agent
+		def groups: Pointed[LocatedGraph] = rules / wac.agentGroup
 		def ag: Boolean = {
 			agent match
 			case WebIdAgent(id) =>
 				val webId = id.toRdf
-				agents.exists{ _.pointer == webId } 
+				agents.points.exists( _ == webId)
 			case KeyIdAgent(keyId, _) =>
-				agents.exists(pg => pg.graph.select(keyId.toRdf, security.controller, pg.pointer).hasNext)
+				agents.exists((node, graph) => graph.select(keyId.toRdf, security.controller, node).hasNext)
 			case _ => false
 		}
 		ac || ag
 	end authorize
 
 	/**
-	 * from a graph of rules, return a stream of pointers to the rules that apply to the given target
-	 * and operation.
+	 * From a graph of rules, return a stream of pointers to the rules that apply to the given target
+	 * and operation.<p>
 	 * The only description supported to start with is acl:default, and we test this by substring on the path of
 	 * the URL.
 	 * todo: we don't deal with rules that specify the target by description, which would require looking
@@ -82,15 +84,20 @@ object Guard {
 		//we assume that all rules are typed
 		val rules: PtsLGraph = Pointed(wac.Authorization, acRulesGraph) /- rdf.`type`
 		//todo: add filter to banana-rdf
-		val it: Iterable[Rdf#Node] = rules.nodes.filter { (node: Rdf#Node) =>
-			modesFor(operation).exists(mode => acRulesGraph.select(node, wac.mode, mode).hasNext) &&
-				(acRulesGraph.select(node, wac.accessTo, targetRsrc).hasNext ||
-					acRulesGraph.select(node, wac.default, ANY).exists { (tr: Rdf#Triple) =>
+		val nodes: LazyList[Rdf#Node] = rules.points.filter { (node: Rdf#Node) =>
+			modesFor(operation).exists(mode => acRulesGraph.graph.select(node, wac.mode, mode).hasNext) &&
+				(acRulesGraph.graph.select(node, wac.accessTo, targetRsrc).hasNext ||
+					acRulesGraph.graph.select(node, wac.default, ANY).exists { (tr: Rdf#Triple) =>
 						tr.objectt.fold(u => u.toAkka.ancestorOf(target), x => false, z => false)
 					})
 		}
-		PointedGraphs(it, acRulesGraph)
+		Pointed(nodes, acRulesGraph)
+	end filterRulesFor
 
+
+	/** Modes needed for the given HTTP Method.
+	 * Control always gives all rights, so always return it.
+	 **/
 	def modesFor(op: GMethod): List[Rdf#URI] =
 		import run.cosy.ldp.SolidCmd
 		val mainMode = op match
@@ -152,7 +159,6 @@ object Guard {
 				}
 			case _ => //the other messages end up getting translated to Plain reuests . todo: check
 				context.self ! Do(msg)
+	end Authorize
 
-
-
-}
+end Guard

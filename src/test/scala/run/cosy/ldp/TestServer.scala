@@ -6,6 +6,7 @@ import run.cosy.RDF.*
 import run.cosy.RDF.Prefix.*
 import run.cosy.RDF.ops.*
 import run.cosy.ldp.ImportsDLTestServer.{base, db}
+import run.cosy.ldp.rdf.LocatedGraphs.LGs
 
 trait TestServer:
 	lazy val podRdfURI: Rdf#URI = base.toRdf
@@ -28,5 +29,8 @@ trait TestServer:
 	lazy val absDB: Map[Uri, Rdf#Graph] = db.map{
 		case (uri,g) => uri -> g.resolveAgainst(uri.resolvedAgainst(base).toRdf)
 	}
+
+	def locatedGraphs(url: Uri): Option[LGs] =
+		absDB.get(url).map(g => LGs(Set(url.toRdf),g))
 
 

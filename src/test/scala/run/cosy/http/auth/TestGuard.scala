@@ -32,8 +32,9 @@ class TestGuard extends munit.FunSuite {
 	val timBl = timBlCardUri.withFragment("i")
 	// "http://localhost:8080/Hello_6"
 	test("test access to resources using root container ACL") {
-		val aclGraph = ws.absDB(rootAcl)
-		assertEquals(Guard.filterRulesFor(aclGraph, rootUri, GET).nodes.toSet,
+		val aclGraph = ws.locatedGraphs(rootAcl).get
+
+		assertEquals(Guard.filterRulesFor(aclGraph, rootUri, GET).points.toSet,
 			Set(podRdfAcl.withFragment("Public"), podRdfAcl.withFragment("Admin")))
 		val answer = Guard.authorizeScript(rootAcl, new Anonymous(), rootUri, GET).foldMap(aclBasic.eval)
 		assert(answer, "The root acl allows all contents to be READable")
@@ -129,8 +130,8 @@ class TestGuard extends munit.FunSuite {
 		val podRdf    = ws.base.toRdf
 		val podRdfAcl = rootAcl.toRdf
 
-		val aclGraph = ws.absDB(rootAcl)
-		assertEquals(Guard.filterRulesFor(aclGraph, rootUri, GET).nodes.toSet, Set(podRdfAcl.withFragment("Public")))
+		val aclGraph = ws.locatedGraphs(rootAcl).get
+		assertEquals(Guard.filterRulesFor(aclGraph, rootUri, GET).points.toSet, Set(podRdfAcl.withFragment("Public")))
 		val answer = Guard.authorizeScript(rootAcl, new Anonymous(), rootUri, GET).foldMap(importsDL.eval)
 		assert(answer, true)
 	}

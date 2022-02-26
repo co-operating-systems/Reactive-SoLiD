@@ -1,4 +1,4 @@
-import sbt.{CrossVersion, _}
+import sbt.{CrossVersion, Def, _}
 
 /**
  * https://www.scala-sbt.org/1.x/docs/Organizing-Build.html
@@ -6,22 +6,22 @@ import sbt.{CrossVersion, _}
 object Dependencies {
 
 	object Versions {
-		val Akka               = "2.6.15"
-		val AkkaHttp           = "10.2.5"
+		val Akka               = "2.6.18"
+		val AkkaHttp           = "10.2.8"
 		val scalaz             = "7.4.0-M7"
 		val circe              = "0.14.0-M4"
-		val banana             = "0.8.6-SNAPSHOT"
-		val alpakka            = "2.0.2"
+		val banana             = "0.8.6"
+		val alpakka            = "3.0.4"
 		val bouncy             = "1.68"
 		val refined            = "0.9.23+7-d4890dd0-SNAPSHOT"
-		val catsParse          = "0.3.4"
-		val catsCore           = "2.6.1"
+		val catsParse          = "0.3.6"
+		val catsCore           = "2.7.0"
 		val catsFree           = catsCore
-		val munit 				  = "0.7.28"
+		val munit 				  = "1.0.0-M1"
 		val disciplineMunit    = "1.0.9"
-		val catsEffect         = "3.1.1"
-		val scalatest          = "3.2.9"
-		val titaniumJSonLD     = "1.0.0"
+		val catsEffect         = "3.3.5"
+		val scalatest          = "3.2.11"
+		val titaniumJSonLD     = "1.2.0"
 		val nimbusDS           = "9.9"
 		val logback            = "1.2.3"
 		val apacheCommonsCodec = "1.15"
@@ -36,6 +36,12 @@ object Dependencies {
 
 		import Dependencies.{Versions => V}
 
+		def module(organization: String, name: String, version: String): Def.Initialize[ModuleID] =
+			Def.setting(organization % name % version cross CrossVersion.for3Use2_13)
+
+		def test(organization: String, name: String, version: String): Def.Initialize[ModuleID] =
+			Def.setting(organization % name % version % Test cross CrossVersion.for3Use2_13)
+
 		/**
 		 * Akka Http Core
 		 * Apache 2 License
@@ -43,22 +49,30 @@ object Dependencies {
 		 * @see https://akka.io
 		 * @see https://repo1.maven.org/maven2/com/typesafe/akka
 		 * */
-		val akka = Seq("com.typesafe.akka" % "akka-actor-typed" % V.Akka,
-			"com.typesafe.akka" % "akka-stream" % V.Akka,
-			"com.typesafe.akka" % "akka-http" % V.AkkaHttp,
-			"com.typesafe.akka" % "akka-slf4j" % V.Akka)
+		lazy val akkaTyped: Def.Initialize[sbt.ModuleID] =
+			module("com.typesafe.akka" , "akka-actor-typed" , V.Akka)
+		lazy val akkaStream: Def.Initialize[sbt.ModuleID] =
+			module("com.typesafe.akka" , "akka-stream" , V.Akka)
+		lazy val akkaHttp: Def.Initialize[sbt.ModuleID] =
+			module("com.typesafe.akka" , "akka-http" , V.AkkaHttp)
+		lazy val akkaSlf4j: Def.Initialize[sbt.ModuleID] =
+			module("com.typesafe.akka" , "akka-slf4j" , V.Akka)
+
 
 		/**
 		 * Apache 2 License
 		 *
 		 * @see https://doc.akka.io/docs/alpakka/current/
 		 */
-		val alpakka = "com.lightbend.akka" % "akka-stream-alpakka-file" % V.alpakka
+		lazy val alpakka: Def.Initialize[sbt.ModuleID] =
+			module("com.lightbend.akka" , "akka-stream-alpakka-file" , V.alpakka)
 
-
-		val akkaTest = Seq("com.typesafe.akka" % "akka-actor-testkit-typed" % V.Akka % Test,
+		//this works, whereas using test method above does not
+		val akkaTest = Seq(
+			"com.typesafe.akka" % "akka-actor-testkit-typed" % V.Akka % Test,
 			"com.typesafe.akka" % "akka-stream-testkit" % V.Akka % Test,
-			"com.typesafe.akka" % "akka-http-testkit" % V.AkkaHttp % Test)
+			"com.typesafe.akka" % "akka-http-testkit" % V.AkkaHttp % Test
+		).map(o => o cross CrossVersion.for3Use2_13)
 
 		/**
 		 * banana-rdf uses Scalaz so we won't use cats right now.
@@ -68,7 +82,8 @@ object Dependencies {
 		 * @see https://scalaz.github.io/7/
 		 * @see [[https://github.com/scalaz/scalaz/blob/master/LICENSE.txt License]]
 		 */
-		val scalaz = "org.scalaz" % "scalaz-core" % V.scalaz
+		lazy val scalaz: Def.Initialize[sbt.ModuleID] =
+			module("org.scalaz" , "scalaz-core" , V.scalaz)
 
 		/**
 		 * banana-rdf is still using 2.13
@@ -76,20 +91,18 @@ object Dependencies {
 		 *
 		 * @see https://github.com/banana-rdf/banana-rdf
 		 */
-		val banana = Seq(
-			"net.bblfish.rdf" % "banana-rdf" % V.banana,
-			"net.bblfish.rdf" % "banana-jena" % V.banana,
-			"net.bblfish.rdf" %% "banana-rdf4j" % V.banana
-		)
-
+		lazy val banana_rdf: Def.Initialize[sbt.ModuleID] =
+			module("net.bblfish.rdf" , "banana-rdf" , V.banana)
+		lazy val banana_jena: Def.Initialize[sbt.ModuleID] =
+			module("net.bblfish.rdf" , "banana-jena" , V.banana)
+		lazy val banana_rdf4j: Def.Initialize[sbt.ModuleID] =
+			module("net.bblfish.rdf" , "banana-rdf4j" , V.banana)
 
 		//	val refined = Seq(
 		//		"eu.timepit" %% "refined"                 % refinedVersion,
 		//		"eu.timepit" %% "refined-cats"            % refinedVersion // optional
 		//	).map(_.exclude("org.scala-lang.modules","scala-xml_2.13"))
 
-		def allCompatibleLibs = (Seq(alpakka) ++ akka ++ akkaTest ++ banana)
-			.map(o => o cross CrossVersion.for3Use2_13)
 	}
 
 	//
@@ -145,6 +158,8 @@ object Dependencies {
 		 * @see https://github.com/typelevel/cats-free
 		 * */
 		val catsFree = "org.typelevel" %% "cats-free" % V.catsFree
+
+		val bobcats = "net.bblfish.crypto" %% "bobcats" % "0.2-69106e6-SNAPSHOT"
 		
 		/**
 		 * MIT License
@@ -171,11 +186,13 @@ object Dependencies {
 		 * @see https://mvnrepository.com/artifact/org.scalameta/munit
 		 */
 		val disciplineMunit = "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test
-		
+
+		val akkaHttpSig = "net.bblfish.crypto" %% "akka-http-signature" % "0.2-f072ad5-SNAPSHOT"
+
 		val all = Seq(
-			catsParse, catsCore, catsFree, alleyCats, catsLaws,
+			catsParse, catsCore, catsFree, alleyCats, catsLaws, catsEffect, bobcats,
 			izumiReflect,
-			scalatest, munit, disciplineMunit)
+			scalatest, munit, disciplineMunit, akkaHttpSig)
 	}
 
 	//

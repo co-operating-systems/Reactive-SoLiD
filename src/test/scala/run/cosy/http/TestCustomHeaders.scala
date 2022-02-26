@@ -1,7 +1,7 @@
 package run.cosy.http
 
-import akka.http.scaladsl.model.{HttpRequest, Uri}
-import akka.http.scaladsl.model.headers.{Link, LinkParams, LinkValue, RawHeader}
+import _root_.akka.http.scaladsl.model.{HttpRequest, Uri}
+import _root_.akka.http.scaladsl.model.headers.{Link, LinkParams, LinkValue, RawHeader}
 import munit._
 import munit.Location._
 
@@ -10,8 +10,8 @@ import scala.util.Success
 /** for more possible test cases and examples see [[https://github.com/akka/akka-http/blob/v10.2.4/akka-http-tests/src/test/scala/akka/http/scaladsl/server/ModeledCustomHeaderSpec.scala ModeledCustomHEaderSpec.scala]]
  */
 class TestCustomHeaders extends munit.FunSuite {
-	import run.cosy.http.headers._
-	import run.cosy.http.Encoding._
+	import _root_.run.cosy.http.headers._
+	import _root_.run.cosy.akka.http.headers.Encoding._
 	test("Slug") {
 		val blg = new Slug("blog".asClean)
 		assertEquals(blg.value,"blog",blg)

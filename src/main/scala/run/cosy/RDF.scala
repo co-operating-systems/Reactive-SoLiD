@@ -1,9 +1,9 @@
 package run.cosy
 
-import org.w3.banana.jena.Jena
-import akka.http.scaladsl.model.Uri
-import org.apache.jena.sparql.vocabulary.FOAF
-import org.w3.banana.FOAFPrefix
+import _root_.org.w3.banana.jena.Jena
+import _root_.akka.http.scaladsl.model.Uri
+import _root_.org.apache.jena.sparql.vocabulary.FOAF
+import _root_.org.w3.banana.FOAFPrefix
 /**
  * Set your preferred implementation of banana-rdf here.
  * Note: this way of setting a preferred implementation of RDF means that

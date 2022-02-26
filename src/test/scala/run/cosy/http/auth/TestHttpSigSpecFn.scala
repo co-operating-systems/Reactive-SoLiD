@@ -1,21 +1,26 @@
 package run.cosy.http.auth
 
 import akka.http.scaladsl.model.{DateTime, HttpMethods, HttpRequest, HttpResponse, MediaRange, MediaRanges, StatusCodes, Uri}
-import akka.http.scaladsl.model.headers.{`WWW-Authenticate`, Accept, Authorization, Date, GenericHttpCredentials, HttpChallenge, Link, LinkParam, LinkParams, LinkValue}
-import HttpMethods._
+import akka.http.scaladsl.model.headers.{Accept, Authorization, Date, GenericHttpCredentials, HttpChallenge, Link, LinkParam, LinkParams, LinkValue, `WWW-Authenticate`}
+import HttpMethods.*
 import akka.http.scaladsl.model.Uri.Host
-import run.cosy.http.RDFMediaTypes._
+import run.cosy.http.RDFMediaTypes.*
 import run.cosy.http.headers.{Rfc8941, SigInput}
-import run.cosy.ldp.testUtils.StringUtils._
-import run.cosy.http.auth.MessageSignature._
-import run.cosy.http.headers.Rfc8941._
-import run.cosy.http.headers.Rfc8941.SyntaxHelper._
+import bobcats.util.StringUtils.*
+import run.cosy.akka.http.headers.AkkaMessageSelectors
+import run.cosy.http.auth.MessageSignature.*
+import run.cosy.http.headers.Rfc8941.*
+import run.cosy.http.headers.Rfc8941.SyntaxHelper.*
 
 import scala.language.implicitConversions
 import java.time.{Clock, Month, ZoneOffset}
 import java.util.Calendar
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
+import bobcats.SigningHttpMessages.`test-key-rsa-pss`
+import bobcats.util.BouncyJavaPEMUtils
+import cats.effect.IO
+import scodec.bits.ByteVector
 
 /**
  * Tests for the [[https://github.com/solid/authentication-panel/blob/main/proposals/HttpSignature.md HttpSig spec proposal]]
@@ -23,7 +28,11 @@ import scala.util.{Failure, Success}
  **/
 class TestHttpSigSpecFn extends munit.FunSuite {
 	 // we use the same keys as Signing Http Messages
-	import TestMessageSigningRFCFn._
+	import bobcats.SigningHttpMessages.{`test-key-rsa-pss`, `test-key-rsa`}
+	import run.cosy.http.auth.AkkaHttpMessageSignature.*
+	val selectors = new AkkaMessageSelectors(true,Uri.Host("localhost"),8080)
+	import selectors.{given,*}
+
 
 	val exMediaRanges: Seq[MediaRange] =
 		Seq(`application/ld+json`.withQValue(0.9),MediaRanges.`*/*`.withQValue(0.8))
@@ -45,17 +54,11 @@ class TestHttpSigSpecFn extends munit.FunSuite {
 
 	given ec: ExecutionContext = scala.concurrent.ExecutionContext.global
 	given clock: Clock = Clock.fixed(java.time.Instant.ofEpochSecond(16188845000), java.time.ZoneOffset.UTC)
-	import run.cosy.http.headers.akka.{given,_}
+	import run.cosy.akka.http.headers.{given,_}
+
 	val t = java.time.LocalDateTime.of(2021, Month.APRIL, 01, 8, 30)
 	val t2 = java.time.LocalDateTime.of(2021, Month.APRIL, 01, 23, 45)
-	val pubkeyPEM = """-----BEGIN RSA PUBLIC KEY-----
-							|MIIBCgKCAQEAhAKYdtoeoy8zcAcR874L8cnZxKzAGwd7v36APp7Pv6Q2jdsPBRrw
-							|WEBnez6d0UDKDwGbc6nxfEXAy5mbhgajzrw3MOEt8uA5txSKobBpKDeBLOsdJKFq
-							|MGmXCQvEG7YemcxDTRPxAleIAgYYRjTSd/QBwVW9OwNFhekro3RtlinV0a75jfZg
-							|kne/YiktSvLG34lw2zqXBDTC5NHROUqGTlML4PlNZS5Ri2U4aCNx2rUPRcKIlE0P
-							|uKxI4T+HIaFpv8+rdV6eUgOrB2xeI1dSFFn/nnv5OoZJEIB+VmuKn3DCUcCZSFlQ
-							|PSXSfBDiUGhwOw76WuSSsf1D4b/vLoJ10wIDAQAB
-							|-----END RSA PUBLIC KEY-----""".stripMargin
+
 	test("intro example") {
 		val Some(si) = SigInput(IList(`@request-target`.sf, authorization.sf)(
 			Token("keyid") -> sf"/keys/alice#",
@@ -63,20 +66,27 @@ class TestHttpSigSpecFn extends munit.FunSuite {
 			Token("expires") -> SfInt(t2.toInstant(ZoneOffset.UTC).toEpochMilli/1000)
 		))
 		val Success(req1signingStr) = req1Ex.signingString(si)
-		val Success(req1signed) = req1Ex.withSigInput(Rfc8941.Token("sig1"),si).flatMap(_(`test-key-rsa-pss-sigdata`))
-		println("----401 response----")
-		println(resp1Ex.documented.toRfc8792single())
-		println("----partial request to be signed---")
-		println(req1Ex.documented.toRfc8792single())
-		println("---signing string----")
-		println(req1signingStr.toRfc8792single())
-		println("----signed request----")
-		println(req1signed.documented.toRfc8792single())
-		import com.nimbusds.jose.jwk.JWK
-		val jwk = JWK.parseFromPEMEncodedObjects(pubkeyPEM)
-		println("----json public key---")
-		println(jwk.toJSONString)
-		//println(sigReq.get.documented)
+		val signerF: IO[ByteVector => IO[ByteVector]] = for
+			spec <- IO.fromTry(BouncyJavaPEMUtils.getPrivateKeySpec(`test-key-rsa-pss`.privatePk8Key,`test-key-rsa-pss`.keyAlg))
+			f <-  bobcats.Signer[IO].build(spec, bobcats.AsymmetricKeyAlg.`rsa-pss-sha512`)
+		yield f
+
+		val respio = for f <- signerF
+		yield req1Ex.withSigInput[IO](Rfc8941.Token("sig1"),si, f)
+
+//		println("----401 response----")
+//		println(resp1Ex.documented.toRfc8792single())
+//		println("----partial request to be signed---")
+//		println(req1Ex.documented.toRfc8792single())
+//		println("---signing string----")
+//		println(req1signingStr.toRfc8792single())
+//		println("----signed request----")
+//		println(req1signed.documented.toRfc8792single())
+//		import com.nimbusds.jose.jwk.JWK
+//		val jwk = JWK.parseFromPEMEncodedObjects(pubkeyPEM)
+//		println("----json public key---")
+//		println(jwk.toJSONString)
+//		//println(sigReq.get.documented)
 	}
 }
 

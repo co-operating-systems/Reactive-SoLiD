@@ -89,8 +89,8 @@ class TestSolidLDPAuthSpec extends AnyWordSpec with Matchers with ScalatestRoute
 				result
 			}
 	end SolidTestPost
-
-	val jwk = JWK.parseFromPEMEncodedObjects(TestHttpSigRSAFn.publicKeyPem)
+	import bobcats.SigningHttpMessages.`test-key-rsa-pss`
+	val jwk = JWK.parseFromPEMEncodedObjects(`test-key-rsa-pss`.publicKey)
 	
 	val lit: Rdf#Node = Literal(jwk.toJSONString,rdf.JSON)
 	val keyGraph: Rdf#Graph = { URI("#") -- security.publicKeyJwk ->- PointedGraph(lit, Graph.empty)}.graph

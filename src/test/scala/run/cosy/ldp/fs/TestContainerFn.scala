@@ -8,7 +8,7 @@ class TestContainerFn extends munit.FunSuite {
 	import model.headers.`Content-Type`
 	import model.{ContentType, ContentTypes, HttpRequest, Uri, HttpEntity}
 	import run.cosy.http.headers.Slug
-	import run.cosy.http.{Encoding => cEncoding}
+	import run.cosy.akka.http.headers.{Encoding => cEncoding}
 	import run.cosy.ldp.fs.{BasicContainer=>bc}
 
 	import java.time.{Clock, Instant, ZoneId}

@@ -1,14 +1,14 @@
 package run.cosy.ldp.fs
 
-import akka.actor.testkit.typed.CapturedLogEvent
-import akka.actor.testkit.typed.Effect._
-import akka.actor.testkit.typed.scaladsl.{ActorTestKit, BehaviorTestKit, TestInbox}
-import akka.actor.typed.Behavior
-import akka.actor.typed.ActorRef
-import akka.actor.typed.scaladsl
-import akka.http.scaladsl.model.HttpMethods.{GET, POST}
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, MediaRange, MediaRanges, MediaTypes}
+import _root_.akka.actor.testkit.typed.CapturedLogEvent
+import _root_.akka.actor.testkit.typed.Effect._
+import _root_.akka.actor.testkit.typed.scaladsl.{ActorTestKit, BehaviorTestKit, TestInbox}
+import _root_.akka.actor.typed.Behavior
+import _root_.akka.actor.typed.ActorRef
+import _root_.akka.actor.typed.scaladsl
+import _root_.akka.http.scaladsl.model.HttpMethods.{GET, POST}
+import _root_.akka.http.scaladsl.model.Uri.Path
+import _root_.akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, MediaRange, MediaRanges, MediaTypes}
 import run.cosy.ldp.{Messages, ResourceRegistry, SolidCmd}
 import run.cosy.ldp.fs.BasicContainer
 
@@ -18,11 +18,11 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.event.Level
 import run.cosy.http.headers.Slug
-import akka.testkit.TestKit
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.StatusCodes.{Created, OK}
-import akka.http.scaladsl.model.headers.{Accept, Location}
-import akka.stream.{ActorMaterializer, Materializer}
+import _root_.akka.testkit.TestKit
+import _root_.akka.actor.ActorSystem
+import _root_.akka.http.scaladsl.model.StatusCodes.{Created, OK}
+import _root_.akka.http.scaladsl.model.headers.{Accept, Location}
+import _root_.akka.stream.{ActorMaterializer, Materializer}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -60,7 +60,7 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
 
 		{
 			//create Hello
-			import _root_.run.cosy.http.Encoding.{given, *}
+			import _root_.run.cosy.akka.http.headers.Encoding.{given, *}
 			rootActr ! Messages.Do(CmdMessage(SolidCmd.plain(
 				HttpRequest(
 					POST,

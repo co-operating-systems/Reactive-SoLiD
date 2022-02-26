@@ -11,8 +11,8 @@ import org.apache.jena.sparql.core.NamedGraph
 import run.cosy.RDF
 import run.cosy.RDF.*
 import run.cosy.RDF.ops.*
-import run.cosy.ldp.rdf.LocatedGraphScriptExt.LocatedGraph
 import run.cosy.ldp.rdf.LocatedGraphs
+import run.cosy.ldp.rdf.LocatedGraphs.LGs
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Success, Try}
@@ -39,15 +39,26 @@ object SolidCmd {
 	 *  - the metadata is Http structured, whereas in RDF1.1 DS these are just URIs or bnodes
 	 *  - this structure does not say anything about sharing of blank nodes
 	 *
-	 * Example
-	 * GraF(ttl"<> a TeaPot.",
-	 * Set(Cofree(Meta(Uri("/People/.acl"),
-	 * GraF(ttl"<> a Kettle.", Set())))
+	 * Example:
+	 * <pre>
+	 * GraF(ttl"&lt;&gt; a TeaPot.",
+	 *    Set(Cofree(
+	 *        Meta(Uri("/People/.acl"),
+	 *             GraF(ttl"&lt;&gt; a Kettle.", Set())
+    *        ))
+ 	 * )
+	 * </pre>
 	 */
 	type RDataSet = GraF[Cofree[GraF, Meta]]
 	/**
-	 * MetaData on a Request for a DataSet
-	 * eg Cofree(Meta(Uri("/.acl"),GraF(ttl"<> a TeaPot.", Set( ... other datasets ...))))
+	 * MetaData on a Request for a DataSet, such as
+	 * <pre>
+	 * Cofree(
+	 *   Meta(Uri("/.acl"),
+	 *   GraF(ttl"&lt;&gt; a TeaPot.",
+	 *        Set( ... other datasets ...))
+	 *  ))
+	 * </pre>
 	 * Actually this is badly named. What RDF understands as a DataSet is
 	 * closer to the type returned by tailForced namely the above defined
 	 * type RDataSet = GraF[Cofree[GraF, Meta]]
@@ -133,8 +144,18 @@ object SolidCmd {
 	 * @param ds
 	 * @return
 	 */
-	def unionAll(ds: ReqDataSet): LocatedGraphs.LGs =
-		Cofree.cata[GraF,Meta,Rdf#Graph](ds)((_, d) => cats.Now(union(d.other.toSeq :+ d.graph))).value
+	def unionAll(ds: ReqDataSet): LGs =
+		import RDF.*
+		Cofree.cata[GraF, Meta, LGs](ds)((meta, gLGs) =>
+			cats.Now {
+				val l = gLGs.other.fold(LGs(Set(), Graph.empty))((lg1, lg2) =>
+					LGs(
+						lg1.from.union(lg2.from),
+						lg1.graph union lg2.graph
+					))
+				LGs(l.from + meta.url.toRdf, l.graph)
+			}
+		).value
 
 	/**
 	 * Get request from URL, but the response should be interpreted to a

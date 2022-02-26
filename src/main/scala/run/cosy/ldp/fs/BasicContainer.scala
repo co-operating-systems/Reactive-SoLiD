@@ -689,12 +689,12 @@ class BasicContainer private(
 							route.msg.redirectTo(redirectTo,"There is no container here. we will redirect to the resource")
 						case r: Route => // the path passes through a file, so it must end here
 							r.msg.respondWith(HttpResponse(NotFound, Seq(), s"Resource with URI ${r.msg.target} does not exist"))
-					case _: Archived => route.msg.respondWith(HttpResponse(Gone))
-					case _: OtherAtt => route.msg.respondWith(HttpResponse(NotFound))
 					dir.start
 				case None =>
-					route.msg.respondWith(HttpResponse(NotFound,
-											entity = HttpEntity(s"""Resource with URI ${route.msg.target} does not exist.""")))
+					route.msg.respondWith(
+						HttpResponse(NotFound,
+							entity = HttpEntity(s"""Resource with URI ${route.msg.target} does not exist."""))
+					)
 					Behaviors.same
 		}
 		end forwardToContainer
@@ -724,8 +724,6 @@ class BasicContainer private(
 				case SMRef(att, actor) => //server managed resource, this is not a Container, but is "owned" by this container.
 					context.log.info(s"we have a Server Managed Resource SMRef($att, $actor)")
 					actor ! wannaDo
-				case _: Archived => wannaDo.msg.respondWith(HttpResponse(Gone))
-				case _: OtherAtt => wannaDo.msg.respondWith(HttpResponse(NotFound))
 				dir.start
 			case None => wannaDo.msg.respondWith(HttpResponse(NotFound,
 									entity = HttpEntity(`text/plain`.withCharset(`UTF-8`),

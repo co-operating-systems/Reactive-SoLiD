@@ -1,40 +1,41 @@
 package run.cosy
 
-import akka.Done
-import akka.actor.CoordinatedShutdown
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors, LoggerOps}
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior, PostStop, Scheduler}
-import akka.http.scaladsl.settings.ParserSettings
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.Http.ServerBinding
-import akka.http.scaladsl.model.Uri.Path.{Empty, Segment, Slash}
-import akka.http.scaladsl.model
-import akka.http.scaladsl.model.headers
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse, Uri}
-import akka.http.scaladsl.server.Directives
-import akka.http.scaladsl.server.Directives.{complete, extract, extractRequestContext}
-import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
-import akka.http.scaladsl.settings.ServerSettings
-import akka.http.scaladsl.util.FastFuture
-import akka.util.Timeout
-import com.typesafe.config.{Config, ConfigFactory}
-import org.w3.banana.PointedGraph
-import run.cosy.http.{IResponse, RDFMediaTypes, RdfParser}
-import run.cosy.http.util.UriX.*
-import run.cosy.http.auth.{Agent, Anonymous, SignatureVerifier, KeyIdAgent, WebServerAgent}
-import run.cosy.ldp.ResourceRegistry
-import run.cosy.ldp.{Messages => LDP}
-import scalaz.NonEmptyList
-import scalaz.NonEmptyList.nel
+import _root_.akka.Done
+import _root_.akka.actor.CoordinatedShutdown
+import _root_.akka.actor.typed.scaladsl.{ActorContext, Behaviors, LoggerOps}
+import _root_.akka.actor.typed.{ActorRef, ActorSystem, Behavior, PostStop, Scheduler}
+import _root_.akka.http.scaladsl.settings.ParserSettings
+import _root_.akka.http.scaladsl.Http
+import _root_.akka.http.scaladsl.Http.ServerBinding
+import _root_.akka.http.scaladsl.model.Uri.Path.{Empty, Segment, Slash}
+import _root_.akka.http.scaladsl.model
+import _root_.akka.http.scaladsl.model.headers
+import _root_.akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse, Uri}
+import _root_.akka.http.scaladsl.server.Directives
+import _root_.akka.http.scaladsl.server.Directives.{complete, extract, extractRequestContext}
+import _root_.akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
+import _root_.akka.http.scaladsl.settings.ServerSettings
+import _root_.akka.http.scaladsl.util.FastFuture
+import _root_.akka.util.Timeout
+import _root_.com.typesafe.config.{Config, ConfigFactory}
+import _root_.org.w3.banana.PointedGraph
+import _root_.run.cosy.http.{IResponse, RDFMediaTypes, RdfParser}
+import _root_.run.cosy.http.util.UriX.*
+import _root_.run.cosy.http.auth.{Agent, Anonymous, KeyIdAgent, MessageSignature, SignatureVerifier, WebServerAgent}
+import _root_.run.cosy.ldp.ResourceRegistry
+import _root_.run.cosy.ldp.Messages as LDP
+import _root_.scalaz.NonEmptyList
+import _root_.scalaz.NonEmptyList.nel
+import cats.effect.IO
+import run.cosy.http.headers.SelectorOps
 
-import java.io.{File, FileInputStream}
-import java.nio.file.{Files, Path}
-import javax.naming.AuthenticationException
-import scala.annotation.tailrec
-import scala.concurrent.{ExecutionContext, Future}
-import scala.io.StdIn
-import scala.util.{Failure, Success}
-
+import _root_.java.io.{File, FileInputStream}
+import _root_.java.nio.file.{Files, Path}
+import _root_.javax.naming.AuthenticationException
+import _root_.scala.annotation.tailrec
+import _root_.scala.concurrent.{ExecutionContext, Future}
+import _root_.scala.io.StdIn
+import _root_.scala.util.{Failure, Success}
 
 object Solid {
 	//todo: make @tailrec
@@ -151,35 +152,49 @@ class Solid(
 	rootRef: ActorRef[LDP.Cmd]
 )(using sys: ActorSystem[_]) {
 
-	import akka.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
-	import run.cosy.http.auth.HttpSigDirective
-	import akka.pattern.ask
-	import run.cosy.http.headers.akka.given
+	import _root_.akka.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
+	import _root_.run.cosy.http.auth.HttpSigDirective
+	import _root_.run.cosy.akka.http.headers.AkkaMessageSelectors
+	import _root_.akka.pattern.ask
+	import _root_.run.cosy.akka.http.headers.given
 
-	import scala.concurrent.duration.*
-	import scala.jdk.CollectionConverters.*
+	import _root_.scala.concurrent.duration.*
+	import _root_.scala.jdk.CollectionConverters.*
+
 	given timeout: Scheduler = sys.scheduler
 	given scheduler: Timeout = Timeout(5.second)
 	given reg: ResourceRegistry = registry
 
-	def fetchKeyId(keyIdUrl: Uri)(reqc: RequestContext): Future[SignatureVerifier[KeyIdAgent]] = {
+	//because we use cats.effect.IO we need a
+	// but we could also do without it by just using Future
+	// see https://github.com/typelevel/cats-effect/discussions/1562#discussioncomment-2249643
+	// todo: perhaps move to using Future
+	import cats.effect.unsafe.implicits.global
+
+	given selectorOps: SelectorOps[HttpRequest] = new AkkaMessageSelectors(
+		true, baseUri.authority.host, baseUri.effectivePort
+	).requestSelectorOps
+
+	def fetchKeyId(keyIdUrl: Uri)(reqc: RequestContext): IO[MessageSignature.SignatureVerifier[IO,KeyIdAgent]] = {
 		import RouteResult.{Complete,Rejected}
 		import run.cosy.RDF.{given,_}
 		import run.cosy.RDF.ops.{given,_}
 
 		given ec: ExecutionContext = reqc.executionContext
 		val req = RdfParser.rdfRequest(keyIdUrl)
+		//todo: also check if the resource is absolute but we can determine it is on the current server
 		if keyIdUrl.isRelative then  //we get the resource locally
-			routeLdp(WebServerAgent)(reqc.withRequest(req)).flatMap{
-				case Complete(response) => RdfParser.unmarshalToRDF(response,keyIdUrl).flatMap{ (g: IResponse[Rdf#Graph]) =>
-					import http.auth.JWKExtractor.*, http.auth.JW2JCA.jw2rca
-					PointedGraph(keyIdUrl.toRdfNode,g.content).asKeyIdInfo match
-						case Some(kidInfo) => FastFuture(jw2rca(kidInfo.pka,keyIdUrl))
-						case None => FastFuture.failed(http.AuthException(null, //todo
-							s"Could not find or parse security:publicKeyJwk relation in <$keyIdUrl>"
-						 ))
+			IO.fromFuture(IO(routeLdp(WebServerAgent)(reqc.withRequest(req)))).flatMap {
+				case Complete(response) => IO.fromFuture(IO(RdfParser.unmarshalToRDF(response,keyIdUrl)))
+					.flatMap{ (g: IResponse[Rdf#Graph]) =>
+						import http.auth.JWKExtractor.*, http.auth.JW2JCA.jw2rca
+						PointedGraph(keyIdUrl.toRdfNode,g.content).asKeyIdInfo match
+							case Some(kidInfo) => IO.fromTry(jw2rca(kidInfo.pka,keyIdUrl))
+							case None => IO.fromTry(Failure(http.AuthException(null, //todo
+								s"Could not find or parse security:publicKeyJwk relation in <$keyIdUrl>"
+							 )))
 				}
-				case r: Rejected => FastFuture(Failure(new Throwable(r.toString))) //todo
+				case r: Rejected => IO.fromTry(Failure(new Throwable(r.toString))) //todo
 			}
 		else // we get it from the web
 			???
@@ -191,11 +206,12 @@ class Solid(
 			case Tuple1(None) => routeLdp()	
 		}
 	}
-	import run.cosy.ldp.SolidCmd
+
+	import _root_.run.cosy.ldp.SolidCmd
 
 	def routeLdp(agent: Agent = new Anonymous()): Route = (reqc: RequestContext) => {
 		val path = reqc.request.uri.path
-		import reqc.{given}
+		import reqc.given
 		reqc.log.info("routing req " + reqc.request.uri)
 		val (remaining, actor): (List[String], ActorRef[LDP.Cmd]) = registry.getActorRef(path)
 			.getOrElse((List[String](), rootRef))

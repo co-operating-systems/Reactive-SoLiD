@@ -2,12 +2,11 @@ package run.cosy.http.headers
 
 import _root_.akka.http.scaladsl.model.HttpHeader
 import _root_.akka.http.scaladsl.model.headers.{CustomHeader, RawHeader}
-import run.cosy.http.{BetterCustomHeader, BetterCustomHeaderCompanion, Encoding}
-import run.cosy.http.Encoding.{UnicodeString, UrlEncoded}
+import _root_.run.cosy.akka.http.headers.{BetterCustomHeader, BetterCustomHeaderCompanion, Encoding}
+import _root_.run.cosy.akka.http.headers.Encoding.{UnicodeString, UrlEncoded}
 
-import scala.util.Try
-
-import Encoding._
+import _root_.scala.util.Try
+import _root_.run.cosy.akka.http.headers.Encoding.*
 
 /**
  * The Slug header was first defined in [[https://tools.ietf.org/html/rfc5023#section-9.7 RFC 5023: Atom Publishing Protocol]]
