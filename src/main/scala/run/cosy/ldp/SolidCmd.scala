@@ -148,13 +148,12 @@ object SolidCmd:
       import RDF.*
       Cofree.cata[GraF, Meta, LGs](ds)((meta, gLGs) =>
         cats.Now {
-          val l = gLGs.other.fold(LGs(Set(), Graph.empty))((lg1, lg2) =>
+          gLGs.other.fold(LGs(Set(meta.url.toRdf), gLGs.graph))((lg1, lg2) =>
             LGs(
               lg1.from.union(lg2.from),
               lg1.graph union lg2.graph
             )
           )
-          LGs(l.from + meta.url.toRdf, l.graph)
         }
       ).value
 

@@ -10,7 +10,9 @@ import akka.http.scaladsl.model.{HttpMethods, Uri}
 import run.cosy.RDF
 import run.cosy.RDF.*
 import run.cosy.RDF.ops.*
-import run.cosy.ldp.{WebServers, TestServer, ImportsDLTestServer, TestCompiler}
+import run.cosy.ldp.rdf.LocatedGraphs.LGs
+import run.cosy.ldp.{ImportsDLTestServer, TestCompiler, TestServer, WebServers}
+import scalaz.Cofree
 
 /* Test Guard on Basic Server */
 class TestGuard extends munit.FunSuite:
@@ -24,6 +26,7 @@ class TestGuard extends munit.FunSuite:
    import run.cosy.ldp.SolidCmd.*
    import WebServers.aclBasic
    import aclBasic.ws
+   import run.cosy.ldp.SolidCmd
 
    val rootAcl = ws.base / ".acl"
    val rootUri = ws.base / ""
@@ -36,15 +39,43 @@ class TestGuard extends munit.FunSuite:
    val timBlSpace   = ws.base / "People" / "Berners-Lee" / ""
    val timBlCardUri = ws.base / "People" / "Berners-Lee" / "card"
    val timBl        = timBlCardUri.withFragment("i")
+
    // "http://localhost:8080/Hello_6"
    test("test access to resources using root container ACL") {
-     val aclGraph = ws.locatedGraphs(rootAcl).get
+
+     val aclGraph: LGs = ws.locatedGraphs(rootAcl).get
 
      assertEquals(
        Guard.filterRulesFor(aclGraph, rootUri, GET).points.toSet,
        Set(podRdfAcl.withFragment("Public"), podRdfAcl.withFragment("Admin"))
      )
-     val answer =
+
+     assert(
+       Guard.authorize(aclGraph, new Anonymous(), rootUri, GET),
+       "The root acl allows all contents to be READable"
+     )
+
+     val fetchedDataSet: ReqDataSet = SolidCmd.fetchWithImports(rootAcl).foldMap(aclBasic.eval)
+     val expectedDataSet: ReqDataSet = cats.free.Cofree(
+       SolidCmd.Meta(rootAcl),
+       cats.Now(SolidCmd.GraF(aclGraph.graph, Set()))
+     )
+     assertEquals(fetchedDataSet, expectedDataSet)
+
+     assertEquals(unionAll(fetchedDataSet), LGs(Set(rootAcl.toRdf), aclGraph.graph))
+
+     val auth: Boolean = Guard.authorize(unionAll(fetchedDataSet), new Anonymous(), rootUri, GET)
+     assert(auth, "Anyone can access the root container")
+
+     val aclWithImports: LGs =
+       SolidCmd.unionAll(SolidCmd.fetchWithImports(rootAcl).foldMap(aclBasic.eval))
+     assertEquals(
+       aclWithImports,
+       aclGraph,
+       "The root graph has no imports so should be the same as fetching it directly"
+     )
+
+     val answer: Boolean =
        Guard.authorizeScript(rootAcl, new Anonymous(), rootUri, GET).foldMap(aclBasic.eval)
      assert(answer, "The root acl allows all contents to be READable")
 
