@@ -63,14 +63,14 @@ object Guard:
       def groups: Pointed[LocatedGraph] = rules / wac.agentGroup
       def ag: Boolean =
         agent match
-           case WebIdAgent(id) =>
-             val webId = id.toRdf
-             agents.points.exists(_ == webId)
-           case KeyIdAgent(keyId, _) =>
-             agents.exists((node, graph) =>
-               graph.select(keyId.toRdf, security.controller, node).hasNext
-             )
-           case _ => false
+        case WebIdAgent(id) =>
+          val webId = id.toRdf
+          agents.points.exists(_ == webId)
+        case KeyIdAgent(keyId, _) =>
+          agents.exists((node, graph) =>
+            graph.select(keyId.toRdf, security.controller, node).hasNext
+          )
+        case _ => false
       ac || ag
    end authorize
 
@@ -105,10 +105,10 @@ object Guard:
    def modesFor(op: GMethod): List[Rdf#URI] =
       import run.cosy.ldp.SolidCmd
       val mainMode = op match
-         case GET    => wac.Read
-         case PUT    => wac.Write
-         case POST   => wac.Write
-         case DELETE => wac.Write
+      case GET    => wac.Read
+      case PUT    => wac.Write
+      case POST   => wac.Write
+      case DELETE => wac.Write
       List(mainMode, wac.Control)
 
    def authorizeScript(
@@ -121,8 +121,8 @@ object Guard:
       for
          reqDS <- fetchWithImports(aclUri)
       yield method match
-         case m: GMethod => authorize(unionAll(reqDS), agent, target, m)
-         case _          => false
+      case m: GMethod => authorize(unionAll(reqDS), agent, target, m)
+      case _          => false
 
    def aclLink(acl: Uri): Link = Link(acl, LinkParams.rel("acl"))
 
@@ -140,46 +140,46 @@ object Guard:
          context.self ! Do(msg)
       else
          msg.commands match
-            case p: Plain[?] =>
-              import msg.given
-              // this script should be sent with admin rights.
-              // note: it could also be sent with the rights of the user, meaning that if the user cannot
-              //   read an acl rule, then it has no access. But that would slow things down as it would require
-              //   every request on every acl to be access controlled!
-              context.ask[ScriptMsg[Boolean], Boolean](
-                context.self,
-                ref =>
-                  ScriptMsg[Boolean](
-                    authorizeScript(aclUri, msg.from, msg.target, p.req.method),
-                    WebServerAgent,
-                    ref
-                  )
-              ) {
-                case Success(true) =>
-                  context.log.info(s"Successfully authorized ${msg.target} ")
-                  Do(msg)
-                case Success(false) =>
-                  context.log.info(s"failed to authorize ${msg.target} ")
-                  msg.respondWithScr(HttpResponse(
-                    StatusCodes.Unauthorized,
-                    Seq(
-                      aclLink(aclUri),
-                      `WWW-Authenticate`(HttpChallenge("Signature", s"${msg.target}"))
-                    )
-                  ))
-                case Failure(e) =>
-                  context.log.info(s"Unable to authorize ${msg.target}: $e ")
-                  msg.respondWithScr(HttpResponse(
-                    StatusCodes.Unauthorized,
-                    Seq(
-                      aclLink(aclUri),
-                      `WWW-Authenticate`(HttpChallenge("Signature", s"${msg.target}"))
-                    ),
-                    HttpEntity(ContentTypes.`text/plain(UTF-8)`, e.getMessage)
-                  ))
-              }
-            case _ => // the other messages end up getting translated to Plain reuests . todo: check
-              context.self ! Do(msg)
+         case p: Plain[?] =>
+           import msg.given
+           // this script should be sent with admin rights.
+           // note: it could also be sent with the rights of the user, meaning that if the user cannot
+           //   read an acl rule, then it has no access. But that would slow things down as it would require
+           //   every request on every acl to be access controlled!
+           context.ask[ScriptMsg[Boolean], Boolean](
+             context.self,
+             ref =>
+               ScriptMsg[Boolean](
+                 authorizeScript(aclUri, msg.from, msg.target, p.req.method),
+                 WebServerAgent,
+                 ref
+               )
+           ) {
+             case Success(true) =>
+               context.log.info(s"Successfully authorized ${msg.target} ")
+               Do(msg)
+             case Success(false) =>
+               context.log.info(s"failed to authorize ${msg.target} ")
+               msg.respondWithScr(HttpResponse(
+                 StatusCodes.Unauthorized,
+                 Seq(
+                   aclLink(aclUri),
+                   `WWW-Authenticate`(HttpChallenge("Signature", s"${msg.target}"))
+                 )
+               ))
+             case Failure(e) =>
+               context.log.info(s"Unable to authorize ${msg.target}: $e ")
+               msg.respondWithScr(HttpResponse(
+                 StatusCodes.Unauthorized,
+                 Seq(
+                   aclLink(aclUri),
+                   `WWW-Authenticate`(HttpChallenge("Signature", s"${msg.target}"))
+                 ),
+                 HttpEntity(ContentTypes.`text/plain(UTF-8)`, e.getMessage)
+               ))
+           }
+         case _ => // the other messages end up getting translated to Plain reuests . todo: check
+           context.self ! Do(msg)
    end Authorize
 
 end Guard

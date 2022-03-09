@@ -28,13 +28,13 @@ case class TestCompiler(val ws: TestServer):
 
    def eval: SolidCmd ~> Id = new (SolidCmd ~> Id):
       def apply[A](cmd: SolidCmd[A]): Id[A] = cmd match
-         case Get(url, f) => ws.absDB.get(url) match
-              case Some(g) => f(Response(Meta(url, StatusCodes.OK, Seq()), Success(g)))
-              // todo: Create an exception for this that can be re-used
-              case None => f(Response(
-                  Meta(url, StatusCodes.NotFound, Seq()),
-                  Failure(new Exception("no content"))
-                ))
-         case Plain(_, _) => ??? // todo: built up an example with Plain contents
-         case Wait(future, uri, k) =>
-           Await.result(future.transform(atry => Success(k(atry))), Duration(20, TimeUnit.SECONDS))
+      case Get(url, f) => ws.absDB.get(url) match
+        case Some(g) => f(Response(Meta(url, StatusCodes.OK, Seq()), Success(g)))
+        // todo: Create an exception for this that can be re-used
+        case None => f(Response(
+            Meta(url, StatusCodes.NotFound, Seq()),
+            Failure(new Exception("no content"))
+          ))
+      case Plain(_, _) => ??? // todo: built up an example with Plain contents
+      case Wait(future, uri, k) =>
+        Await.result(future.transform(atry => Success(k(atry))), Duration(20, TimeUnit.SECONDS))

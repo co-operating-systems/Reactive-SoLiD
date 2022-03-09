@@ -35,8 +35,8 @@ trait PathDB[T]:
      pathMap.updateAndGet { tree =>
         val pathLst = pathToList(path)
         tree match
-           case None      => if (pathLst.isEmpty) then Some(ATree(actorRef)) else None
-           case Some(ref) => Some(ref.insert(actorRef, pathLst))
+        case None      => if (pathLst.isEmpty) then Some(ATree(actorRef)) else None
+        case Some(ref) => Some(ref.insert(actorRef, pathLst))
      }
 
    /** remove an actor Ref from the local DB */
@@ -81,29 +81,29 @@ case class ATree[A](a: A, kids: HashMap[String, ATree[A]] = HashMap[String, ATre
 
    final def insert(newRef: A, at: Path): ATree[A] =
      at match
-        case Nil         => if a == newRef then this else ATree[A](newRef)
-        case name :: Nil => ATree(a, kids + (name -> ATree[A](newRef)))
-        case name :: tail => // todo: stack problem
-          val alt = kids.get(name).map(kid => kid.insert(newRef, tail))
-          alt match
-             case None    => this // we could not insert anything so we return this
-             case Some(k) => ATree(a, kids + (name -> k))
+     case Nil         => if a == newRef then this else ATree[A](newRef)
+     case name :: Nil => ATree(a, kids + (name -> ATree[A](newRef)))
+     case name :: tail => // todo: stack problem
+       val alt = kids.get(name).map(kid => kid.insert(newRef, tail))
+       alt match
+       case None    => this // we could not insert anything so we return this
+       case Some(k) => ATree(a, kids + (name -> k))
 
    final def delete(at: Path): Option[ATree[A]] =
      at match
-        case Nil => None
-        case name :: tail => // todo: stack problem
-          Some(deleteNE(name, tail))
+     case Nil => None
+     case name :: tail => // todo: stack problem
+       Some(deleteNE(name, tail))
 
    final def deleteNE(name: String, remaining: List[String]): ATree[A] =
      kids.get(name) match
-        case None => this
-        case Some(tree) =>
-          remaining match
-             case Nil => ATree(a, kids - name)
-             case head :: tail => // todo: stack problem
-               val alt = tree.deleteNE(head, tail)
-               ATree(a, kids + (name -> alt))
+     case None => this
+     case Some(tree) =>
+       remaining match
+       case Nil => ATree(a, kids - name)
+       case head :: tail => // todo: stack problem
+         val alt = tree.deleteNE(head, tail)
+         ATree(a, kids + (name -> alt))
 
    /** @param at
      *   path to resource A
@@ -112,9 +112,9 @@ case class ATree[A](a: A, kids: HashMap[String, ATree[A]] = HashMap[String, ATre
      */
    final def findClosest(at: Path): (Path, A) =
      at match
-        case Nil => (at, a)
-        case name :: tail => // todo: stack problem
-          kids.get(name) match
-             case None => (at, a)
-             case Some(tree) =>
-               tree.findClosest(tail)
+     case Nil => (at, a)
+     case name :: tail => // todo: stack problem
+       kids.get(name) match
+       case None => (at, a)
+       case Some(tree) =>
+         tree.findClosest(tail)
