@@ -25,6 +25,11 @@ ThisBuild / scmInfo := Some(ScmInfo(
   "git@github.com:co-operating-systems/Reactive-SoLiD.git"
 ))
 
+//may want to remove for sbt-tylevel 0.5 - added this to avoid having all tests run for pull and push in CI
+//see https://github.com/typelevel/sbt-typelevel/issues/177
+ThisBuild / githubWorkflowTargetBranches := Seq("main")
+
+
 // does not work for some reason
 //ThisBuild / headerLicense := Some(HeaderLicense.ALv2(
 //  "2021",

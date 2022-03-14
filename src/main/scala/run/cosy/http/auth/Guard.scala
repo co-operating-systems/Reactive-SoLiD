@@ -56,7 +56,7 @@ object Guard:
      */
    def authorize(acg: LGs, agent: Agent, target: Uri, operation: GMethod): Boolean =
       val rules = filterRulesFor(acg, target, operation)
-      def ac: Boolean = (rules / wac.agentClass).points.exists {
+      def publicResource: Boolean = (rules / wac.agentClass).points.exists {
         _ == foaf.Agent // || todo: fill in authenticated agent and groups
       }
       def agents: Pointed[LocatedGraph] = rules / wac.agent
@@ -71,7 +71,7 @@ object Guard:
             graph.select(keyId.toRdf, security.controller, node).hasNext
           )
         case _ => false
-      ac || ag
+      publicResource || ag
    end authorize
 
    /** From a graph of rules, return a stream of pointers to the rules that apply to the given
