@@ -6,9 +6,13 @@ todo: clarify namespaces listed
 
 A Guard that has to reason about whether an Agent A - identified by a set
 of properties P - is authorized to access a resource R has to go by the 
-rules T associated with R via the headers. The Guard will follow those rules, 
-thereby making those rules describe the Guards actions and hence be true.
-With WAC documents containing `imports` a Guard can even build a DataSet
+rules T associated with R via the headers given in a 401 response as for
+example described by the [WAC spec](https://solidproject.org/TR/wac). 
+
+The Guard will follow those rules, thereby making them describe the Guard's 
+behavior leading as a consequence to the world being as described.
+
+With WAC documents containing `imports` relations (see [issue 210](https://github.com/solid/authorization-panel/issues/210)) a Guard can even build a DataSet
 the union of which will be considered to provide the rules for the Guard.
 
 The Guard also has verified attributes from the Authentication Process, proving
@@ -276,12 +280,14 @@ Do we need a link from the rule to the Group or the WebID? That would make
 the reasoning hint more precise, but would also use up more space. And it
 would work better if rules had names.
 
-#### Encoding of reasoning hints.
+### Encoding of reasoning hints.
 
   It looks like we need to express the paths taken from a rule to the
 key, where the path constitutes a proof. (Q: Is that all that is needed?)
 We may want to specify when a jump from one document to another needs to be
 made. 
+
+#### With RFC 5988 Web Linking?
 
 Could we use [RFC 5988 Web Linking](https://datatracker.ietf.org/doc/html/rfc8288)?
 We could add the path as `Link` headers ordered by their position in
@@ -292,7 +298,7 @@ In addition to what RFC 5988 offers, we need to
 grouping them if we have more than one hint.
  * specify when the object of the link (or subject when the link is 
 reversed as when using security:controller in the examples above) needs to
-jump to a new resource. We could start off assuming it always does.
+jump to a new resource. We could start off assuming it always does, when it is not a blank node
  * we may later want some way to specify that a link is inferred by 
 reasoning. As what is needed becomes clear, we may find we need a header
 more powerful than a link relation. 
@@ -302,8 +308,174 @@ defines "Target attributes are a list of key/value pairs that describe the
 link or its target". So we can create an attribute "wac_hint" with an optional
 value of a number to group sets of hints and order them.
 
-That should be enough for our current use cases where we try to relate a rule
-to a key.
+That would work if the nodes we landed on were always URIs, as Link relations require
+the subject of a link (which is called the context) to be a URI and the target to be a
+URL too. If we use a keyId the final term will always be a URI, but the initial rule 
+may not be, and indirect identifications of agents via their key as we saw above make 
+a lot of sense.
 
+```Turtle
+_:rule1 wac:agent [ cert:key <did:key:z6MkiTBz1ymu...> ]
+```
+or 
+```Turtle
+<#rule2> wac:agentGroup [ foaf:member bob:i ]. 
+```
 
+where `bob:i` is then related to the keyId one way or another in its own document. 
+
+Another thing to notice is that the Link header allows multiple links between two
+resources in one link. But the client giving the hint knows exactly the link to
+follow, so it only needs one link. 
+
+#### Creating a new header WAC-Hint
+
+We need to have a way to specify a path of relations with occasional 
+intermediary objects, as these can reduces the search space a lot.
+
+Using the [RFC 8941: Structured Field Values](https://datatracker.ietf.org/doc/html/rfc8941)
+syntax we can use the [inner list](https://www.rfc-editor.org/rfc/rfc8941.html#name-inner-lists) construct
+to encode a path. (Note: sadly RFC8941 does not support URI encoding directly)
+
+##### Simple example following two links
+
+For the `_:rule1` example above we could write up the path as 
+
+```HTTP
+WAC-Hint: ( rule "wac:agent";rel "cert:key";rel keyId )
+```
+
+Here 
+* `rule` is a token to indicate a bnode rule to start off with
+* `"wac:agent";rel` is a relation using the registered wac namespace
+* `"cert:key";rel` is a relation using the registered cert namespace
+* `keyId` refers to the keyId used in the Authentication. 
+  If there could be more than one we would want to name them. The keyId URI could also be
+  used here as `"<did:key:z6MkiTBz1ymu...>". (todo: find good defaults - e.g. perhaps rel should be the default?)
+
+So the hint is to follow the wac:agent relation on a relevant rule and from 
+there the cert:key rule. 
+
+This hint could save searching the `wac:agentGroup` or `wac:accessToClass` spaces for the rule
+if those exist. It also tells the Guard that all the data is in the effective WAC rules, so 
+there is no need to search outside that space.
+
+##### Example jumping into a new document
+
+If we take the example `<#auth1>` from the top of this document, then a client
+could send the following hint
+
+```HTTP
+NOTE: '\' line wrapping per RFC 8792
+
+WAC-Hint: ( "<#auth1>" "wac:agent";rel "<https://bblfish.net/people/henry/card#me> \
+   "cert:key";rel keyId )
+```
+
+This would tell the Guard to start with rule `<#auth1>` follow the relation `wac:agent` to the
+WebID `<https://bblfish.net/people/henry/card#me>` and continuing from the location in the remote
+graph follow the `cert:key` relation. 
+
+The can reduce the search space down from having to look at the profiles of `n` friends to
+just looking for 1. 
+
+#####  Example following three links
+
+For the `_:rule2` example above we could write up the path as 
+
+```HTTP
+NOTE: '\' line wrapping per RFC 8792
+
+WAC-Hint: ( "<.acl#r1>" "wac:agentGroup";rel "foaf:member";rel \
+   "<https://bob.name/card#i>" \
+   "security:controller";rev keyId )
+```
+
+Here the hint is that we start with a specific rule given by a relative URL to be resolved 
+by the request target and then follow the `wac:agentGroup` relation (to the blank node)
+followed by a `foaf:member` relation to bob's WebID (which we then dereference 
+by default to continue from bob's WebID profile) and then follow the 
+`security:controller` relation in reverse to the `keyId` which we used to authenticate.
+
+The idea is simple: when two relations follow each other we assume there is a blank
+node in between them. If a relation is followed by a URL node that is the object
+the relation. If that URL is followed by another relation, then it is the subject of 
+that new relation. 
+
+##### Complex: Friend of a friend Rule
+
+A major use case for Solid is to allow for decentralised social networks, 
+where we could give access to friend of a friend.
+
+A rule that allows friends of friends of timbl to access a resource
+could be expressed like this using basic owl constructs.
+
+First we define a foaf relation
+
+```Turtle
+foaf:foaf owl:propertyChainAxiom (foaf:knows foaf:knows);
+   a rdf:Property, owl:ObjectProperty;
+   :label "friend of a friend";
+   :comment ”A person known by someone the subject knows. This is not a symmetric property”;
+   :domain foaf:Person;
+   :range foaf:Person.
+```
+Next we can define two classes: Tim's direct foaf:knows relations and the class of those
+for which there is a two step foaf:knows path
+```Turtle
+<#TimFriends> a owl:Class;
+  :comment ”The class of people that Tim foaf:knows”;
+  owl:equivalentClass [ a owl:Restriction ;
+    :comment "foaf:knows is not usually used in a symetric manner";
+    owl:onProperty [ owl:inverseOf foaf:knows ];
+    owl:hasValue <https://www.w3.org/People/Berners-Lee/#i>;
+  ].
+  
+<#TimFoaf> a owl:Class;
+  :comment ”The class of friends of friends of Tim”;
+  owl:equivalentClass [ a owl:Restriction ;
+     owl:onProperty [ owl:inverseOf foaf:foaf ];
+     owl:hasValue <https://www.w3.org/People/Berners-Lee/#i>;
+  ].
+```
+Having defined those we can define a rule that gives Read access to the union
+of the previous two groups.
+
+```Turtle
+<#foafRule> wac:default <friends>;
+   wac:mode wac:Read;
+   wac:agentClass <#foaf> .
+    
+<#foaf> owl:equivalentClass [
+      owl:unionOf (<#TimFoaf> <#TimFriends>)
+   ].
+
+```
+
+then a hint could be written like this
+
+```HTTP
+NOTE: '\' line wrapping per RFC 8792
+
+WAC-Hint: ( "<.acl#foafRule>" "wac:agentClass";rel "<.acl#foaf>" \
+   "rdf:type";rev;reason=r1 \
+   "<https://alice.name/#i>" "security:controller";rev keyId )
+WAC-Hint: r1=( "<https://www.w3.org/People/Berners-Lee/#i>" "foaf:foaf";rel;reason=r2 "<https://alice.name/#i>")
+WAC-Hint: r2=( "<https://www.w3.org/People/Berners-Lee/#i>" "foaf:knows";rel <https://bblfish.net/people/henry/card/#me> \
+    "foaf:knows";rel "<https://alice.name/#i>"
+```
+
+In the above I am attempting to find a way to giving reasons for a relation seperately, in a 
+different `WAC-Hint` which decomposes the relation into constituent parts. (This is just
+a first draft of an idea). So in the main proof path we have that alice is of 
+type `<.acl#foaf>` which matches what is required of the rule. But we then need to explain why
+she is member of that class, and that is because she is a member of `<#TimFoaf>` and that is explained
+because there is a link from Tim to alice via `foaf:foaf`. That link itself needs to be
+decomposed into two `foaf:knows` relations which is done in `r2`.
+
+A lot of detail is missing in those rules. 
+
+We would like to perhaps simplify the reasoning also. We would like a generic equivalent 
+of `<#foaf>` where we could just plug in the original person, and specify that the proof
+for that is just to find one or two `foaf:knows` relations.
 
