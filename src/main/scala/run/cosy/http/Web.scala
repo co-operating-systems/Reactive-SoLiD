@@ -51,19 +51,19 @@ class Web(using val ec: ExecutionContext, val as: ActorSystem[Nothing]):
                ResponseSummary(req.uri, resp.status, resp.headers, resp.entity.contentType)
 
              resp.status match
-                case Success(_) => Future.successful((resp, summary :: history))
-                case Redirection(_) => {
-                  resp.header[model.headers.Location].map { loc =>
-                     val newReq = req.withUri(loc.uri)
-                     resp.discardEntityBytes()
-                     if maxRedirect > 0 then
-                        GET(newReq, maxRedirect - 1, summary :: history)
-                     else Http().singleRequest(newReq).map((_, summary :: history))
-                  }.getOrElse(Future.failed(HTTPException(
-                    summary,
-                    s"Location header not found on ${resp.status} for ${req.uri}"
-                  )))
-                }
+              case Success(_) => Future.successful((resp, summary :: history))
+              case Redirection(_) => {
+                resp.header[model.headers.Location].map { loc =>
+                   val newReq = req.withUri(loc.uri)
+                   resp.discardEntityBytes()
+                   if maxRedirect > 0 then
+                      GET(newReq, maxRedirect - 1, summary :: history)
+                   else Http().singleRequest(newReq).map((_, summary :: history))
+                }.getOrElse(Future.failed(HTTPException(
+                  summary,
+                  s"Location header not found on ${resp.status} for ${req.uri}"
+                )))
+              }
 //todo later: deal with authorization on remote resources
 //							case Unauthorized  => {
 //								import akka.http.scaladsl.model.headers.{`WWW-Authenticate`,Date}
@@ -84,10 +84,10 @@ class Web(using val ec: ExecutionContext, val as: ActorSystem[Nothing]):
 //								}
 //								Future.fromTry(tryFuture).flatten
 //							}
-                case _ => {
-                  resp.discardEntityBytes()
-                  Future.failed(StatusCodeException(summary))
-                }
+              case _ => {
+                resp.discardEntityBytes()
+                Future.failed(StatusCodeException(summary))
+              }
           }
      catch
         case NonFatal(e) => Future.failed(ConnectionException(req.uri.toString, e))

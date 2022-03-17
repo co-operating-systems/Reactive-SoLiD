@@ -71,8 +71,9 @@ class LDPCmdTest extends munit.FunSuite:
      //  <https://w3.org/People/Berners-Lee/.acl>
      // The nesting of Graphs makes sense if say the request were fetched via a certain agent (a proxy perhaps).
      // In that case nested graph metadata would really need to include Agent information.
-     val urlTree = ds2.mapBranchingS(new (GraF ~> Set):
-        def apply[A](gr: GraF[A]): Set[A] = gr.other
+     val urlTree = ds2.mapBranchingS(
+       new (GraF ~> Set):
+          def apply[A](gr: GraF[A]): Set[A] = gr.other
      ).map(_.url).forceAll
 
      assertEquals(
@@ -103,8 +104,6 @@ class LDPCmdTest extends munit.FunSuite:
      // the fixpoints of GF is just a non-empty set of Graphs.
      val g: Graphs = Fix(GraF(
        cardAcl,
-       Set(
-         Fix(GraF(BLAcl, Set()))
-       )
+       Set(Fix(GraF(BLAcl, Set())))
      ))
    }

@@ -151,28 +151,28 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
    override def linkDoesNotExistBehavior: Behaviors.Receive[AcceptMsg] =
      Behaviors.receiveMessage[AcceptMsg] { (msg: AcceptMsg) =>
         msg match
-           case cmd: Route =>
-             cmd.msg.respondWith(HttpResponse(NotFound))
-           case PostCreation(_, cmsg) =>
-             context.log.warn(
-               s"received Create on resource <$uri> at <$linkPath> that does not have a symlink! " +
-                 s"Message should not reach this point."
-             )
-             cmsg.respondWith(HttpResponse(
-               InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
-           case StateSaved(_, cmsg) =>
-             context.log.warn(
-               s"received a state saved on source <$uri> at <$linkPath> that has been does not have a symlink!"
-             )
-             cmsg.respondWith(HttpResponse(
-               InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
-           case script: ScriptMsg[?] =>
-             import script.given
-             script.continue
+         case cmd: Route =>
+           cmd.msg.respondWith(HttpResponse(NotFound))
+         case PostCreation(_, cmsg) =>
+           context.log.warn(
+             s"received Create on resource <$uri> at <$linkPath> that does not have a symlink! " +
+               s"Message should not reach this point."
+           )
+           cmsg.respondWith(HttpResponse(
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
+         case StateSaved(_, cmsg) =>
+           context.log.warn(
+             s"received a state saved on source <$uri> at <$linkPath> that has been does not have a symlink!"
+           )
+           cmsg.respondWith(HttpResponse(
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
+         case script: ScriptMsg[?] =>
+           import script.given
+           script.continue
         Behaviors.stopped
      }
 
@@ -190,49 +190,49 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
      */
    def justCreatedBehavior = Behaviors.receiveMessage[AcceptMsg] { (msg: AcceptMsg) =>
      msg match
-        case cr: PostCreation =>
-          BuildContent(cr)
-          Behaviors.same
-        case StateSaved(null, cmd) =>
-          // ACR: what happens if the ACL creation fails?! (That makes the resource innaccessible....)
-          // If we can't save the body of a POST then the POST fails
-          // note: DELETE can make sense in so far as the default behavior is just to return the imports of parent acl.
-          // todo: the parent should also be notified... (which it will with stopped below, but enough?)
-          Files.delete(linkPath)
-          // is there a more specific error to be had?
-          cmd.respondWith(HttpResponse(
-            StatusCodes.InternalServerError,
-            entity = HttpEntity("upload unsucessful")
-          ))
-          Behaviors.stopped
-        case StateSaved(pos, cmd) =>
-          // todo: we may only want to check that the symlinks are correct
-          import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-          import Resource.*
-          val tmpSymLinkPath = Files.createSymbolicLink(
-            linkPath.resolveSibling(pos.getFileName.toString + ".tmp"),
-            pos.getFileName
-          )
-          Files.move(tmpSymLinkPath, linkPath, ATOMIC_MOVE)
-          val att = Files.readAttributes(pos, classOf[BasicFileAttributes])
-          cmd.respondWith(HttpResponse(
-            Created,
-            Location(uri) :: Link(AclLink :: LDPR(uri) :: Nil) :: AllowHeader :: headersFor(att),
-            HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
-          ))
-          behavior
-        case route: Route =>
-          // todo: here we could change the behavior to one where requests are stashed until the upload
-          // is finished, or where they are returned with a "please wait" response...
-          route.msg.respondWith(HttpResponse(
-            Conflict,
-            entity = HttpEntity("the resource is not yet completely uploaded. Try again later.")
-          ))
-          Behaviors.same
-        case script: ScriptMsg[?] =>
-          import script.given
-          script.continue
-          Behaviors.same
+      case cr: PostCreation =>
+        BuildContent(cr)
+        Behaviors.same
+      case StateSaved(null, cmd) =>
+        // ACR: what happens if the ACL creation fails?! (That makes the resource innaccessible....)
+        // If we can't save the body of a POST then the POST fails
+        // note: DELETE can make sense in so far as the default behavior is just to return the imports of parent acl.
+        // todo: the parent should also be notified... (which it will with stopped below, but enough?)
+        Files.delete(linkPath)
+        // is there a more specific error to be had?
+        cmd.respondWith(HttpResponse(
+          StatusCodes.InternalServerError,
+          entity = HttpEntity("upload unsucessful")
+        ))
+        Behaviors.stopped
+      case StateSaved(pos, cmd) =>
+        // todo: we may only want to check that the symlinks are correct
+        import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+        import Resource.*
+        val tmpSymLinkPath = Files.createSymbolicLink(
+          linkPath.resolveSibling(pos.getFileName.toString + ".tmp"),
+          pos.getFileName
+        )
+        Files.move(tmpSymLinkPath, linkPath, ATOMIC_MOVE)
+        val att = Files.readAttributes(pos, classOf[BasicFileAttributes])
+        cmd.respondWith(HttpResponse(
+          Created,
+          Location(uri) :: Link(AclLink :: LDPR(uri) :: Nil) :: AllowHeader :: headersFor(att),
+          HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
+        ))
+        behavior
+      case route: Route =>
+        // todo: here we could change the behavior to one where requests are stashed until the upload
+        // is finished, or where they are returned with a "please wait" response...
+        route.msg.respondWith(HttpResponse(
+          Conflict,
+          entity = HttpEntity("the resource is not yet completely uploaded. Try again later.")
+        ))
+        Behaviors.same
+      case script: ScriptMsg[?] =>
+        import script.given
+        script.continue
+        Behaviors.same
    }
 
 object ACResource:
@@ -305,11 +305,11 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
               // we do this in 2 stages to later be optimised to 1 later
               // 1. we want to build a Map[Uri,Graph] from the Cofree structure
 
-              val mapDS: Map[Uri, Rdf#Graph] = Cofree.cata[GraF, Meta, Map[Uri, Rdf#Graph]](dt)(
-                (meta: Meta, grds: GraF[Map[Uri, Rdf#Graph]]) =>
-                  cats.Now(grds.other.fold(Map()) { (m1, m2) =>
-                    m1 ++ m2
-                  } + (meta.url -> grds.graph))
+              val mapDS: Map[Uri, Rdf#Graph] = Cofree.cata[GraF, Meta, Map[Uri,
+                  Rdf#Graph]](dt)((meta: Meta, grds: GraF[Map[Uri, Rdf#Graph]]) =>
+                cats.Now(grds.other.fold(Map()) { (m1, m2) =>
+                  m1 ++ m2
+                } + (meta.url -> grds.graph))
               ).value
 
               import org.eclipse.rdf4j.model.{Model, Resource as eResource, IRI, Value}
@@ -320,13 +320,13 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
                  val n: eResource = name.toRdf.asInstanceOf[eResource]
                  graph.triples.foreach { tr =>
                    tr.subject match
-                      case sub: eResource =>
-                        val pred: IRI  = tr.predicate
-                        val obj: Value = tr.objectt
-                        model.add(sub, pred, obj, n)
-                      case _ =>
-                    // todo: otherwise we have a literal in subject position.
-                    // deal with this when moving to banana-rdf
+                    case sub: eResource =>
+                      val pred: IRI  = tr.predicate
+                      val obj: Value = tr.objectt
+                      model.add(sub, pred, obj, n)
+                    case _ =>
+                 // todo: otherwise we have a literal in subject position.
+                 // deal with this when moving to banana-rdf
                  }
               }
 
@@ -398,22 +398,22 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
         override def Put(cmd: CmdMessage[?]): Unit =
           if lastVersion == 0 then
              cmd.commands match
-                case p @ Plain(req, k) =>
-                  if req.entity.contentType.mediaType == `text/turtle` then
-                     val linkToPath: FPath = versionFPath(1, `text/turtle`.fileExtensions.head)
-                     PUTstarted = true
-                     BuildContent(PostCreation(linkToPath, cmd))
-                  else
-                     cmd.respondWith(
-                       HttpResponse(
-                         StatusCodes.NotAcceptable,
-                         entity = HttpEntity("we only accept Plain HTTP Put")
-                       )
+              case p @ Plain(req, k) =>
+                if req.entity.contentType.mediaType == `text/turtle` then
+                   val linkToPath: FPath = versionFPath(1, `text/turtle`.fileExtensions.head)
+                   PUTstarted = true
+                   BuildContent(PostCreation(linkToPath, cmd))
+                else
+                   cmd.respondWith(
+                     HttpResponse(
+                       StatusCodes.NotAcceptable,
+                       entity = HttpEntity("we only accept Plain HTTP Put")
                      )
-                case _ => cmd.respondWith(HttpResponse(
-                    StatusCodes.NotImplemented,
-                    entity = HttpEntity("we don't yet deal with PUT for " + cmd.commands)
-                  ))
+                   )
+              case _ => cmd.respondWith(HttpResponse(
+                  StatusCodes.NotImplemented,
+                  entity = HttpEntity("we don't yet deal with PUT for " + cmd.commands)
+                ))
           else super.Put(cmd)
         end Put
 
@@ -482,9 +482,9 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
         }.orElse {
           Try {
             linkToFileName match
-               case dotLinkName.File(version, extension) =>
-                 VersionsInfo(version, linkTo).NormalBehavior
-               case _ => fileSystemProblemBehavior(new Exception("Storage problem."))
+             case dotLinkName.File(version, extension) =>
+               VersionsInfo(version, linkTo).NormalBehavior
+             case _ => fileSystemProblemBehavior(new Exception("Storage problem."))
           }.toOption
         }.get
      catch // TODO: clean this up!
@@ -517,34 +517,34 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
    def fileSystemProblemBehavior(e: Exception): Behaviors.Receive[AcceptMsg] =
      Behaviors.receiveMessage[AcceptMsg] { (msg: AcceptMsg) =>
         msg match
-           case cmd: Route =>
-             cmd.msg.respondWith(
-               HttpResponse(
-                 InternalServerError,
-                 entity =
-                   HttpEntity(`text/x-java-source`.withCharset(HttpCharsets.`UTF-8`), e.toString)
-               )
-             )
-           case PostCreation(_, cmsg) =>
-             context.log.warn(
-               s"received Create on resource <$uri> at <$linkPath> that does not have a symlink! " +
-                 s"Message should not reach this point."
-             )
-             cmsg.respondWith(HttpResponse(
+         case cmd: Route =>
+           cmd.msg.respondWith(
+             HttpResponse(
                InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
-           case StateSaved(_, cmsg) =>
-             context.log.warn(
-               s"received a state saved on source <$uri> at <$linkPath> that has been does not have a symlink!"
+               entity =
+                 HttpEntity(`text/x-java-source`.withCharset(HttpCharsets.`UTF-8`), e.toString)
              )
-             cmsg.respondWith(HttpResponse(
-               InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
-           case script: ScriptMsg[?] =>
-             import script.given
-             script.continue
+           )
+         case PostCreation(_, cmsg) =>
+           context.log.warn(
+             s"received Create on resource <$uri> at <$linkPath> that does not have a symlink! " +
+               s"Message should not reach this point."
+           )
+           cmsg.respondWith(HttpResponse(
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
+         case StateSaved(_, cmsg) =>
+           context.log.warn(
+             s"received a state saved on source <$uri> at <$linkPath> that has been does not have a symlink!"
+           )
+           cmsg.respondWith(HttpResponse(
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
+         case script: ScriptMsg[?] =>
+           import script.given
+           script.continue
         Behaviors.stopped
      }
 
@@ -568,47 +568,47 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
       import cmd.*
       import cmd.given
       cmd.commands match
-         case Plain(req, k) =>
-           log.info(
-             s"""received POST request with headers ${req.headers} and CT=${req.entity.contentType}
-                |Saving to: $linkToPath""".stripMargin
-           )
-           val f: Future[IOResult] = req.entity.dataBytes.runWith(FileIO.toPath(linkToPath))
-           context.pipeToSelf(f) {
-             case Success(IOResult(count, _)) => StateSaved(linkToPath, cmd)
-             case Failure(e) =>
-               log.warn(s"Unable to prcess request $cr. Deleting $linkToPath")
-               // actually one may want to allow the client to continue from where it left off
-               // but until then we delete the broken resource immediately
-               Files.deleteIfExists(linkToPath)
-               StateSaved(null, cmd)
-           }
-         case _ => log.warn("not implemented Resource.BuildContent for non Plain requests")
+       case Plain(req, k) =>
+         log.info(
+           s"""received POST request with headers ${req.headers} and CT=${req.entity.contentType}
+              |Saving to: $linkToPath""".stripMargin
+         )
+         val f: Future[IOResult] = req.entity.dataBytes.runWith(FileIO.toPath(linkToPath))
+         context.pipeToSelf(f) {
+           case Success(IOResult(count, _)) => StateSaved(linkToPath, cmd)
+           case Failure(e) =>
+             log.warn(s"Unable to prcess request $cr. Deleting $linkToPath")
+             // actually one may want to allow the client to continue from where it left off
+             // but until then we delete the broken resource immediately
+             Files.deleteIfExists(linkToPath)
+             StateSaved(null, cmd)
+         }
+       case _ => log.warn("not implemented Resource.BuildContent for non Plain requests")
 
    // todo: Gone behavior may also stop itself earlier
    def GoneBehavior: Behaviors.Receive[AcceptMsg] =
      Behaviors.receiveMessage[AcceptMsg] { (msg: AcceptMsg) =>
         msg match
-           case cmd: Route => cmd.msg.respondWith(HttpResponse(Gone))
-           case PostCreation(_, cmsg) =>
-             log.warn(s"received Create on resource <$uri> at <$linkPath> that has been deleted! " +
-               s"Message should not reach this point.")
-             cmsg.respondWith(HttpResponse(
-               InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
-           case StateSaved(_, cmsg) =>
-             log.warn(
-               s"received a state saved on source <$uri> at <$linkPath> that has been deleted!"
-             )
-             cmsg.respondWith(HttpResponse(
-               InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
-           case script: ScriptMsg[?] =>
-             import script.given
-             script.continue
-             Behaviors.same
+         case cmd: Route => cmd.msg.respondWith(HttpResponse(Gone))
+         case PostCreation(_, cmsg) =>
+           log.warn(s"received Create on resource <$uri> at <$linkPath> that has been deleted! " +
+             s"Message should not reach this point.")
+           cmsg.respondWith(HttpResponse(
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
+         case StateSaved(_, cmsg) =>
+           log.warn(
+             s"received a state saved on source <$uri> at <$linkPath> that has been deleted!"
+           )
+           cmsg.respondWith(HttpResponse(
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
+         case script: ScriptMsg[?] =>
+           import script.given
+           script.continue
+           Behaviors.same
         Behaviors.same
      }
 
@@ -704,100 +704,100 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
          Behaviors.receiveMessage[Resource.AcceptMsg] { (msg: Resource.AcceptMsg) =>
             context.log.info(s"in NormalBehavior of VersionsInfo($lastVersion, $linkTo) << $msg")
             msg match
-               case script: ScriptMsg[?] =>
-                 import script.given
-                 script.continue
-                 Behaviors.same
-               case WannaDo(cmdmsg @ CmdMessage(commands, from, replyTo)) =>
-                 // first we need to see if we need to route the Wannado
-                 if (!dotLinkName.isACR) && dotLinkName.hasACR(cmdmsg.target.fileName.get) then
-                    aclActor ! msg
-                 else Guard.Authorize(cmdmsg, aclUri)
-                 Behaviors.same
-               case Do(cmdmsg @ CmdMessage(cmd, agent, replyTo)) =>
-                 import cmdmsg.given
-                 cmd match
-                    case Plain(req, f) =>
-                      req.method match
-                         case GET | HEAD =>
-                           doPlainGet(cmdmsg, req, f)
-                         case OPTIONS =>
-                           cmdmsg.respondWith(HttpResponse( // todo, add more
-                             NoContent,
-                             AllowHeader :: Nil
-                           ))
-                           Behaviors.same
-                         // ACR: Here we can't allow anything in - only RDF graphs, and perhaps only those with specific shapes
-                         //   but on the other hand that means the verification is happening at the RDF Graph layer.
-                         //   so in a way one level higher up.
-                         //   also we do allow PUT on creation (if DELETE is allowed)
-                         //   How could we specify this requirement?
-                         case PUT =>
-                           Put(cmdmsg)
-                           Behaviors.same
-                         // ACR: would this still be callable? Depends by whome? (cmdmsg contains the info)
-                         //  Can make sense if this resource has a default content to return, eg. :imports of parent
-                         //  The cleanup operation in implementition here won't be needed
-                         case DELETE => Delete(cmdmsg)
-                         case m =>
-                           cmdmsg.respondWith(HttpResponse(
-                             MethodNotAllowed,
-                             AllowHeader :: Nil,
-                             HttpEntity(s"method $m not supported")
-                           ))
-                           Behaviors.same
-                    case Get(url, k) =>
-                      // 1. todo: check if we have cached version, if so continue with that
-                      // 2. if not, build it from result of plain HTTP request
-                      import cats.free.Free
-                      import _root_.run.cosy.RDF.{given, *}
-                      // todo: we should not have to call resume here as we set everything up for plain
-                      SolidCmd.getFromPlain(url, k).resume match
-                         case Left(plain) =>
-                           context.self.tell(Do(CmdMessage(plain, agent, replyTo)))
-                         case _ => ???
-                      Behaviors.same
-                    case Wait(future, u, k) =>
-                      // it is difficult to see why a Wait would be sent somewhere,...
-                      // but what is sure is that if it is, then this seems the only reasonable thing to do:
-                      context.pipeToSelf(future) { tryVal => ScriptMsg(k(tryVal), agent, replyTo) }
-                      Behaviors.same
-               case pc: PostCreation =>
-                 // the PostCreation message is sent from Put(...), but it is immediately acted on
-                 // and so does not come through here. Still if it comes through here it would
-                 // call this method. Should it come through here?
-                 BuildContent(pc)
-                 // todo: cleanup, the PUT above should create a name, and then send the PostCreation message
-                 Behaviors.same
-               case StateSaved(null, cmd) =>
-                 PUTstarted = false
-                 // the upload failed, but we can return info about the current state
-                 val att = Files.readAttributes(linkTo, classOf[BasicFileAttributes])
-                 cmd.respondWith(HttpResponse(
-                   StatusCodes.InternalServerError,
-                   Location(uri) :: AllowHeader :: Link(
-                     AclLink :: LDPR(uri) :: VersionLinks(lastVersion)
-                   ) :: headersFor(att),
-                   entity = HttpEntity("PUT unsucessful")
-                 ))
-                 Behaviors.same
-               case StateSaved(fpath, cmd) =>
-                 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-                 val tmpSymLinkPath = Files.createSymbolicLink(
-                   linkPath.resolveSibling(linkPath.getFileName.toString + ".tmp"),
-                   fpath.getFileName
-                 )
-                 Files.move(tmpSymLinkPath, linkPath, ATOMIC_MOVE)
-                 // todo: state saved should just return the VersionInfo.
-                 val att = Files.readAttributes(fpath, classOf[BasicFileAttributes])
-                 cmd.respondWith(HttpResponse(
-                   OK,
-                   Location(uri) :: AllowHeader :: Link(
-                     AclLink :: LDPR(uri) :: VersionLinks(lastVersion + 1)
-                   ) :: headersFor(att),
-                   HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
-                 ))
-                 VersionsInfo(lastVersion + 1, fpath).NormalBehavior
+             case script: ScriptMsg[?] =>
+               import script.given
+               script.continue
+               Behaviors.same
+             case WannaDo(cmdmsg @ CmdMessage(commands, from, replyTo)) =>
+               // first we need to see if we need to route the Wannado
+               if (!dotLinkName.isACR) && dotLinkName.hasACR(cmdmsg.target.fileName.get) then
+                  aclActor ! msg
+               else Guard.Authorize(cmdmsg, aclUri)
+               Behaviors.same
+             case Do(cmdmsg @ CmdMessage(cmd, agent, replyTo)) =>
+               import cmdmsg.given
+               cmd match
+                case Plain(req, f) =>
+                  req.method match
+                   case GET | HEAD =>
+                     doPlainGet(cmdmsg, req, f)
+                   case OPTIONS =>
+                     cmdmsg.respondWith(HttpResponse( // todo, add more
+                       NoContent,
+                       AllowHeader :: Nil
+                     ))
+                     Behaviors.same
+                   // ACR: Here we can't allow anything in - only RDF graphs, and perhaps only those with specific shapes
+                   //   but on the other hand that means the verification is happening at the RDF Graph layer.
+                   //   so in a way one level higher up.
+                   //   also we do allow PUT on creation (if DELETE is allowed)
+                   //   How could we specify this requirement?
+                   case PUT =>
+                     Put(cmdmsg)
+                     Behaviors.same
+                   // ACR: would this still be callable? Depends by whome? (cmdmsg contains the info)
+                   //  Can make sense if this resource has a default content to return, eg. :imports of parent
+                   //  The cleanup operation in implementition here won't be needed
+                   case DELETE => Delete(cmdmsg)
+                   case m =>
+                     cmdmsg.respondWith(HttpResponse(
+                       MethodNotAllowed,
+                       AllowHeader :: Nil,
+                       HttpEntity(s"method $m not supported")
+                     ))
+                     Behaviors.same
+                case Get(url, k) =>
+                  // 1. todo: check if we have cached version, if so continue with that
+                  // 2. if not, build it from result of plain HTTP request
+                  import cats.free.Free
+                  import _root_.run.cosy.RDF.{given, *}
+                  // todo: we should not have to call resume here as we set everything up for plain
+                  SolidCmd.getFromPlain(url, k).resume match
+                   case Left(plain) =>
+                     context.self.tell(Do(CmdMessage(plain, agent, replyTo)))
+                   case _ => ???
+                  Behaviors.same
+                case Wait(future, u, k) =>
+                  // it is difficult to see why a Wait would be sent somewhere,...
+                  // but what is sure is that if it is, then this seems the only reasonable thing to do:
+                  context.pipeToSelf(future) { tryVal => ScriptMsg(k(tryVal), agent, replyTo) }
+                  Behaviors.same
+             case pc: PostCreation =>
+               // the PostCreation message is sent from Put(...), but it is immediately acted on
+               // and so does not come through here. Still if it comes through here it would
+               // call this method. Should it come through here?
+               BuildContent(pc)
+               // todo: cleanup, the PUT above should create a name, and then send the PostCreation message
+               Behaviors.same
+             case StateSaved(null, cmd) =>
+               PUTstarted = false
+               // the upload failed, but we can return info about the current state
+               val att = Files.readAttributes(linkTo, classOf[BasicFileAttributes])
+               cmd.respondWith(HttpResponse(
+                 StatusCodes.InternalServerError,
+                 Location(uri) :: AllowHeader :: Link(
+                   AclLink :: LDPR(uri) :: VersionLinks(lastVersion)
+                 ) :: headersFor(att),
+                 entity = HttpEntity("PUT unsucessful")
+               ))
+               Behaviors.same
+             case StateSaved(fpath, cmd) =>
+               import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+               val tmpSymLinkPath = Files.createSymbolicLink(
+                 linkPath.resolveSibling(linkPath.getFileName.toString + ".tmp"),
+                 fpath.getFileName
+               )
+               Files.move(tmpSymLinkPath, linkPath, ATOMIC_MOVE)
+               // todo: state saved should just return the VersionInfo.
+               val att = Files.readAttributes(fpath, classOf[BasicFileAttributes])
+               cmd.respondWith(HttpResponse(
+                 OK,
+                 Location(uri) :: AllowHeader :: Link(
+                   AclLink :: LDPR(uri) :: VersionLinks(lastVersion + 1)
+                 ) :: headersFor(att),
+                 HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
+               ))
+               VersionsInfo(lastVersion + 1, fpath).NormalBehavior
          }
       end NormalBehavior
 
@@ -879,19 +879,19 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
         // todo: we need to check that the extension fits the previous mime types
         //     this is definitively clumsy.
         dotLinkName.remaining(linkTo.getFileName.toString) match
-           case Some(List(AsInt(num), ext))
-               if req.entity.contentType.mediaType.fileExtensions.contains(ext) =>
-             val linkToPath: FPath = versionFPath(lastVersion + 1, ext)
-             PUTstarted = true
-             BuildContent(PostCreation(linkToPath, cmd))
-           // todo: here we should change the behavior to one where requests are stashed until the upload
-           // is finished, or where they are returned with a "please wait" response...
-           case _ => cmd.respondWith(HttpResponse(
-               StatusCodes.Conflict,
-               Seq(),
-               HttpEntity("At present we can only accept a PUT with the same " +
-                 "Media Type as previously sent. Which is " + extension(linkTo))
-             ))
+         case Some(List(AsInt(num), ext))
+             if req.entity.contentType.mediaType.fileExtensions.contains(ext) =>
+           val linkToPath: FPath = versionFPath(lastVersion + 1, ext)
+           PUTstarted = true
+           BuildContent(PostCreation(linkToPath, cmd))
+         // todo: here we should change the behavior to one where requests are stashed until the upload
+         // is finished, or where they are returned with a "please wait" response...
+         case _ => cmd.respondWith(HttpResponse(
+             StatusCodes.Conflict,
+             Seq(),
+             HttpEntity("At present we can only accept a PUT with the same " +
+               "Media Type as previously sent. Which is " + extension(linkTo))
+           ))
 
       private def GetVersionResponse(path: FPath, ver: Int, mt: MediaType): HttpResponse =
          context.log.info(s"GetVersionResponse( $path, $ver, $mt)")
@@ -932,21 +932,21 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
          context.log.info(s"PlainGet. accMR=$accMR")
          if accMR.exists(_.matches(mt)) then
             dotLinkName.remaining(req.uri.fileName.get) match
-               case Some(List(AsInt(num), ext)) if mt.fileExtensions.contains(ext) =>
-                 GetVersionResponse(linkPath.resolveSibling(dotLinkName.baseName), num, mt)
-               case Some(List(AsInt(num))) if num >= 0 && num <= lastVersion =>
-                 // the request is for a version, but mime left open
-                 GetVersionResponse(
-                   linkPath.resolveSibling(dotLinkName.Version(num, mt.fileExtensions.head).name),
-                   num,
-                   mt
-                 )
-               case Some(List()) => GetVersionResponse(linkTo, lastVersion, mt)
-               case _ => HttpResponse(
-                   StatusCodes.NotFound,
-                   entity =
-                     HttpEntity(s"could not find resource for <${req.uri}> with " + req.headers)
-                 )
+             case Some(List(AsInt(num), ext)) if mt.fileExtensions.contains(ext) =>
+               GetVersionResponse(linkPath.resolveSibling(dotLinkName.baseName), num, mt)
+             case Some(List(AsInt(num))) if num >= 0 && num <= lastVersion =>
+               // the request is for a version, but mime left open
+               GetVersionResponse(
+                 linkPath.resolveSibling(dotLinkName.Version(num, mt.fileExtensions.head).name),
+                 num,
+                 mt
+               )
+             case Some(List()) => GetVersionResponse(linkTo, lastVersion, mt)
+             case _ => HttpResponse(
+                 StatusCodes.NotFound,
+                 entity =
+                   HttpEntity(s"could not find resource for <${req.uri}> with " + req.headers)
+               )
          else
             import akka.http.scaladsl.model.ContentTypes.`text/html(UTF-8)`
             HttpResponse(
@@ -1101,7 +1101,8 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
               )
               cmd.respondWith(HttpResponse(
                 InternalServerError,
-                entity = HttpEntity(`text/plain(UTF-8)`, "Server badly configured. Contact admin.")
+                entity =
+                  HttpEntity(`text/plain(UTF-8)`, "Server badly configured. Contact admin.")
               ))
               return Behaviors.stopped
             case e: DirectoryNotEmptyException =>
@@ -1123,26 +1124,31 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
               )
               cmd.respondWith(HttpResponse(
                 InternalServerError,
-                entity = HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
+                entity =
+                  HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
               ))
               return Behaviors.stopped
             case e: SecurityException =>
               log.error(s"Security Exception trying move link <$linkPath> to archive.", e)
               cmd.respondWith(HttpResponse(
                 InternalServerError,
-                entity = HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
+                entity =
+                  HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
               ))
               return Behaviors.stopped
             case e: IOException =>
               log.error(s"IOException trying move link <$linkPath> to archive.", e)
               cmd.respondWith(HttpResponse(
                 InternalServerError,
-                entity = HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
+                entity =
+                  HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
               ))
               return Behaviors.stopped
             case e: FileAlreadyExistsException =>
-              log.warn(s"trying to move <$linkPath> to <$archive> but a file with that name already exists. " +
-                s"Will continue with DELETE operation.")
+              log.warn(
+                s"trying to move <$linkPath> to <$archive> but a file with that name already exists. " +
+                  s"Will continue with DELETE operation."
+              )
               try
                  Files.delete(linkPath)
               catch

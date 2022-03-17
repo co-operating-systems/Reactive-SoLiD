@@ -28,16 +28,16 @@ object JW2JCA:
 
    def jw2rca(jwk: JWK, keyId: Uri): Try[MessageSignature.SignatureVerifier[IO, KeyIdAgent]] =
      jwk.getAlgorithm match
-        case jwsAlgo: JWSAlgorithm =>
-          Try(RSASSA.getSignerAndVerifier(jwsAlgo, signerFactory.getJCAContext.getProvider))
-            .flatMap { sig =>
-              jwk match
-                 case k: AsymmetricJWK => Try(
-                     SignatureVerifier(keyId, k.toPublicKey, sig)
-                   )
-                 case _ => Failure(CryptoException("we only use asymmetric keys!"))
-            }
-        case alg => Failure(CryptoException("We do not support algorithm " + alg))
+      case jwsAlgo: JWSAlgorithm =>
+        Try(RSASSA.getSignerAndVerifier(jwsAlgo, signerFactory.getJCAContext.getProvider))
+          .flatMap { sig =>
+            jwk match
+             case k: AsymmetricJWK => Try(
+                 SignatureVerifier(keyId, k.toPublicKey, sig)
+               )
+             case _ => Failure(CryptoException("we only use asymmetric keys!"))
+          }
+      case alg => Failure(CryptoException("We do not support algorithm " + alg))
 
    /** Get the java.security.signature for a given JCA Algorithm todo: build a typesafe library of
      * such algorithms

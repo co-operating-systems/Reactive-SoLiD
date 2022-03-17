@@ -23,21 +23,21 @@ object StringUtils:
    extension (msg: HttpMessage)
      def documented: String =
         val l: List[String] = msg match
-           case req: HttpRequest =>
-             import req.*
-             s"${method.value} $uri ${protocol.value}" :: {
-               for h <- headers.toList yield s"${h.name}: ${h.value}"
-             }
-           case res: HttpResponse =>
-             import res.*
-             protocol.value + " " + status.value :: {
-               for h <- headers.toList yield s"${h.name}: ${h.value}"
-             }
+         case req: HttpRequest =>
+           import req.*
+           s"${method.value} $uri ${protocol.value}" :: {
+             for h <- headers.toList yield s"${h.name}: ${h.value}"
+           }
+         case res: HttpResponse =>
+           import res.*
+           protocol.value + " " + status.value :: {
+             for h <- headers.toList yield s"${h.name}: ${h.value}"
+           }
         import msg.*
         val ct = entity match
-           case HttpEntity.Empty => List()
-           case e: HttpEntity if e.contentType != ContentTypes.NoContentType =>
-             ("Content-Type: " + e.contentType) ::
-               e.contentLengthOption.map("Content-Length: " + _).toList
-           case _ => List()
+         case HttpEntity.Empty => List()
+         case e: HttpEntity if e.contentType != ContentTypes.NoContentType =>
+           ("Content-Type: " + e.contentType) ::
+             e.contentLengthOption.map("Content-Length: " + _).toList
+         case _ => List()
         (l ::: ct).mkString("\n")

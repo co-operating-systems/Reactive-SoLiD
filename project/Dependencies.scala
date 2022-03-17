@@ -193,7 +193,7 @@ object Dependencies {
       */
     val disciplineMunit = "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test
 
-    val akkaHttpSig = "net.bblfish.crypto" %% "akka-http-signature" % "0.2-f072ad5-SNAPSHOT"
+    val akkaHttpSig = "net.bblfish.crypto" %% "akka-http-signature" % "0.2-0d139dd-20220311T142629Z-SNAPSHOT"
 
     val all = Seq(
       catsParse,

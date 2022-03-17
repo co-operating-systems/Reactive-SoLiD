@@ -9,7 +9,7 @@ package run.cosy
 import _root_.org.w3.banana.jena.Jena
 import _root_.akka.http.scaladsl.model.Uri
 import _root_.org.apache.jena.sparql.vocabulary.FOAF
-import _root_.org.w3.banana.FOAFPrefix
+import _root_.org.w3.banana.{CertPrefix, FOAFPrefix}
 
 /** Set your preferred implementation of banana-rdf here. Note: this way of setting a preferred
   * implementation of RDF means that all code referring to this must use one implementation of
@@ -56,7 +56,8 @@ object RDF:
       import org.w3.banana.{LDPPrefix, RDFPrefix, WebACLPrefix}
       import run.cosy.http.auth.SecurityPrefix
 
-      val wac = WebACLPrefix[Rdf]
+      val wac  = WebACLPrefix[Rdf]
+      val cert = CertPrefix[Rdf]
 // rdf is imported in ops
 //		val rdf = RDFPrefix[Rdf]
       val ldp      = LDPPrefix[Rdf]
