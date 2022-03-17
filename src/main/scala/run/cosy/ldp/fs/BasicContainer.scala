@@ -458,11 +458,11 @@ class BasicContainer private (
 //						createACL(null)
               // reply that done
               create.cmd.respondWith(HttpResponse(
-                  Created,
-                  Location(
-                    containerUrl.withPath(containerUrl.path / "")
-                  ) :: LinkHeaders :: AllowHeader :: Nil
-                ))
+                Created,
+                Location(
+                  containerUrl.withPath(containerUrl.path / "")
+                ) :: LinkHeaders :: AllowHeader :: Nil
+              ))
               Behaviors.same
             case routeMsg: RouteMsg => routeHttpReq(routeMsg)
             case ChildTerminated(name) =>
@@ -621,38 +621,38 @@ class BasicContainer private (
             // this should have been dealt with by parent container, which should have tried conneg.
             val ldpcUri = uri.withPath(uri.path / "")
             pcmd.respondWith(HttpResponse(
-                MovedPermanently,
-                Seq(Location(ldpcUri)),
-                entity = s"This resource is now a container at ${uri}"
-              ))
+              MovedPermanently,
+              Seq(Location(ldpcUri)),
+              entity = s"This resource is now a container at ${uri}"
+            ))
             Behaviors.same
          else
             method match
              case OPTIONS =>
                pcmd.respondWith(HttpResponse( // todo, add more
-                   NoContent,
-                   `Accept-Post` :: AllowHeader :: Nil
-                 ))
+                 NoContent,
+                 `Accept-Post` :: AllowHeader :: Nil
+               ))
                Behaviors.same
              case GET | HEAD => // return visible contents of directory
                // todo: I don't think this takes account of priorities. Check
                if req.headers[Accept].exists(_.mediaRanges.exists(_.matches(`text/turtle`))) then
                   pcmd.respondWith(HttpResponse(
-                      OK,
-                      aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
-                      HttpEntity(
-                        `text/turtle`.toContentType,
-                        Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_)).map(s =>
-                          ByteString(s)
-                        )
+                    OK,
+                    aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
+                    HttpEntity(
+                      `text/turtle`.toContentType,
+                      Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_)).map(s =>
+                        ByteString(s)
                       )
-                    ))
+                    )
+                  ))
                else
                   pcmd.respondWith(HttpResponse(
-                      UnsupportedMediaType,
-                      aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
-                      HttpEntity("We only support text/turtle media type at the moment")
-                    ))
+                    UnsupportedMediaType,
+                    aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
+                    HttpEntity("We only support text/turtle media type at the moment")
+                  ))
                Behaviors.same
              case POST => // create resource
                // todo: create sub container for LDPC Post
@@ -682,13 +682,13 @@ class BasicContainer private (
                      dir.start
                    case Failure(e) =>
                      pcmd.respondWith(HttpResponse(
-                         InternalServerError,
-                         Seq(),
-                         HttpEntity(
-                           `text/x-java-source`.withCharset(HttpCharsets.`UTF-8`),
-                           e.toString
-                         )
-                       ))
+                       InternalServerError,
+                       Seq(),
+                       HttpEntity(
+                         `text/x-java-source`.withCharset(HttpCharsets.`UTF-8`),
+                         e.toString
+                       )
+                     ))
                      Behaviors.same
                else // create resource
                   val (linkName: String, linkTo: String) = createLinkNames(plainCmd.req)
@@ -707,13 +707,13 @@ class BasicContainer private (
                      dir.start
                    case Failure(e) =>
                      pcmd.respondWith(HttpResponse(
-                         InternalServerError,
-                         Seq(),
-                         HttpEntity(
-                           `text/x-java-source`.withCharset(HttpCharsets.`UTF-8`),
-                           e.toString
-                         )
-                       ))
+                       InternalServerError,
+                       Seq(),
+                       HttpEntity(
+                         `text/x-java-source`.withCharset(HttpCharsets.`UTF-8`),
+                         e.toString
+                       )
+                     ))
                      Behaviors.same
                end if
              case DELETE =>
@@ -726,23 +726,23 @@ class BasicContainer private (
                   Behaviors.stopped
                else
                   pcmd.respondWith(HttpResponse(
-                      Conflict,
-                      aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
-                      entity = HttpEntity(
-                        `text/turtle`.toContentType,
-                        Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_))
-                          .map(s => ByteString(s))
-                      )
-                    ))
+                    Conflict,
+                    aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
+                    entity = HttpEntity(
+                      `text/turtle`.toContentType,
+                      Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_))
+                        .map(s => ByteString(s))
+                    )
+                  ))
                   Behaviors.same
              // todo: create new PUT request and forward to new actor?
              // or just save the content to the file?
              case _ =>
                pcmd.respondWith(HttpResponse(
-                   NotImplemented,
-                   Seq(),
-                   entity = s"have not implemented  ${plainCmd.req.method} for ${plainCmd.req.uri}"
-                 ))
+                 NotImplemented,
+                 Seq(),
+                 entity = s"have not implemented  ${plainCmd.req.method} for ${plainCmd.req.uri}"
+               ))
                Behaviors.same
       end run
 
@@ -759,11 +759,11 @@ class BasicContainer private (
          context.log.info(s"in forwardToContainer($name, $route)")
          if name.indexOf('.') > 0 then
             route.msg.respondWith(HttpResponse(
-                NotFound,
-                entity = HttpEntity(
-                  "This Solid server serves no resources with a '.' char in path segments (except for the last `file` segment)."
-                )
-              ))
+              NotFound,
+              entity = HttpEntity(
+                "This Solid server serves no resources with a '.' char in path segments (except for the last `file` segment)."
+              )
+            ))
             Behaviors.same
          else
             getRef(name) match
@@ -784,10 +784,10 @@ class BasicContainer private (
                        "We should never arrive at this point!! Look at how we got here"
                      )
                      r.msg.respondWith(HttpResponse(
-                         InternalServerError,
-                         Seq(),
-                         s"Resource with URI ${r.msg.target} does not exist"
-                       ))
+                       InternalServerError,
+                       Seq(),
+                       s"Resource with URI ${r.msg.target} does not exist"
+                     ))
                 case RRef(att, actor) => // there is no container, so redirect to resource
                   route match
                    case WannaDo(cmd) => // we're at the path end, so we can redirect
@@ -798,10 +798,10 @@ class BasicContainer private (
                      )
                    case r: Route => // the path passes through a file, so it must end here
                      r.msg.respondWith(HttpResponse(
-                         NotFound,
-                         Seq(),
-                         s"Resource with URI ${r.msg.target} does not exist"
-                       ))
+                       NotFound,
+                       Seq(),
+                       s"Resource with URI ${r.msg.target} does not exist"
+                     ))
                dir.start
              case None =>
                route.msg.respondWith(
@@ -845,13 +845,13 @@ class BasicContainer private (
             dir.start
           case None =>
             wannaDo.msg.respondWith(HttpResponse(
-                NotFound,
-                entity = HttpEntity(
-                  `text/plain`.withCharset(`UTF-8`),
-                  s"""Resource with URI ${wannaDo.msg.target} does not exist.
-                     |Try posting to <${containerUrl}> container first.""".stripMargin
-                )
-              ))
+              NotFound,
+              entity = HttpEntity(
+                `text/plain`.withCharset(`UTF-8`),
+                s"""Resource with URI ${wannaDo.msg.target} does not exist.
+                   |Try posting to <${containerUrl}> container first.""".stripMargin
+              )
+            ))
             Behaviors.same
       end forwardMsgToResourceActor
 

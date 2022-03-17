@@ -60,9 +60,9 @@ class Web(using val ec: ExecutionContext, val as: ActorSystem[Nothing]):
                       GET(newReq, maxRedirect - 1, summary :: history)
                    else Http().singleRequest(newReq).map((_, summary :: history))
                 }.getOrElse(Future.failed(HTTPException(
-                      summary,
-                      s"Location header not found on ${resp.status} for ${req.uri}"
-                    )))
+                  summary,
+                  s"Location header not found on ${resp.status} for ${req.uri}"
+                )))
               }
 //todo later: deal with authorization on remote resources
 //							case Unauthorized  => {

@@ -32,9 +32,9 @@ case class TestCompiler(val ws: TestServer):
           case Some(g) => f(Response(Meta(url, StatusCodes.OK, Seq()), Success(g)))
           // todo: Create an exception for this that can be re-used
           case None => f(Response(
-                Meta(url, StatusCodes.NotFound, Seq()),
-                Failure(new Exception("no content"))
-              ))
+              Meta(url, StatusCodes.NotFound, Seq()),
+              Failure(new Exception("no content"))
+            ))
        case Plain(_, _) => ??? // todo: built up an example with Plain contents
        case Wait(future, uri, k) =>
          Await.result(future.transform(atry => Success(k(atry))), Duration(20, TimeUnit.SECONDS))

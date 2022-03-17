@@ -201,22 +201,22 @@ object Guard:
               case Success(false) =>
                 context.log.info(s"failed to authorize ${msg.target} ")
                 msg.respondWithScr(HttpResponse(
-                    StatusCodes.Unauthorized,
-                    Seq(
-                      aclLink(aclUri),
-                      `WWW-Authenticate`(HttpChallenge("Signature", s"${msg.target}"))
-                    )
-                  ))
+                  StatusCodes.Unauthorized,
+                  Seq(
+                    aclLink(aclUri),
+                    `WWW-Authenticate`(HttpChallenge("Signature", s"${msg.target}"))
+                  )
+                ))
               case Failure(e) =>
                 context.log.info(s"Unable to authorize ${msg.target}: $e ")
                 msg.respondWithScr(HttpResponse(
-                    StatusCodes.Unauthorized,
-                    Seq(
-                      aclLink(aclUri),
-                      `WWW-Authenticate`(HttpChallenge("Signature", s"${msg.target}"))
-                    ),
-                    HttpEntity(ContentTypes.`text/plain(UTF-8)`, e.getMessage)
-                  ))
+                  StatusCodes.Unauthorized,
+                  Seq(
+                    aclLink(aclUri),
+                    `WWW-Authenticate`(HttpChallenge("Signature", s"${msg.target}"))
+                  ),
+                  HttpEntity(ContentTypes.`text/plain(UTF-8)`, e.getMessage)
+                ))
             }
           case _ => // the other messages end up getting translated to Plain reuests . todo: check
             context.self ! Do(msg)

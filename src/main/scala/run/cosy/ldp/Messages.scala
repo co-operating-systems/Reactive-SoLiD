@@ -72,12 +72,12 @@ object Messages:
          case Plain(req, k) => ScriptMsg(k(res), from, replyTo)
          case g @ Get(u, k) =>
            val x: Script[R] = k(Response(
-               Meta(g.url, res.status, res.headers),
-               Failure(Exception(
-                   "what should I put here? We can only put a failure I think because the " +
-                     "response to a Get should be a Graph. So unless this is a serialised graph..."
-                 ))
+             Meta(g.url, res.status, res.headers),
+             Failure(Exception(
+               "what should I put here? We can only put a failure I think because the " +
+                 "response to a Get should be a Graph. So unless this is a serialised graph..."
              ))
+           ))
            ScriptMsg(x, from, replyTo)
          case Wait(f, u, k) => ??? // not sure what to do here!
 
@@ -90,9 +90,9 @@ object Messages:
          case Plain(req, k) => continue(k(res))
          case g @ Get(u, k) =>
            val x: Script[R] = k(Response(
-               Meta(g.url, res.status, res.headers),
-               Failure(Exception("what should I put here?"))
-             ))
+             Meta(g.url, res.status, res.headers),
+             Failure(Exception("what should I put here?"))
+           ))
            continue(x)
          case Wait(f, u, k) => ??? // not sure what to do here!
 

@@ -71,10 +71,12 @@ object Solid:
         val ps  = ParserSettings.forServer(system).withCustomMediaTypes(RDFMediaTypes.all*)
         val ss1 = ServerSettings(system)
         val serverSettings = ss1.withParserSettings(ps)
-          .withServerHeader(Some(headers.Server(
-                headers.ProductVersion("reactive-solid", "0.3"),
-                ss1.serverHeader.toSeq.flatMap(_.products)*
-              )))
+          .withServerHeader(
+            Some(headers.Server(
+              headers.ProductVersion("reactive-solid", "0.3"),
+              ss1.serverHeader.toSeq.flatMap(_.products)*
+            ))
+          )
           .withDefaultHostHeader(headers.Host(uri.authority.host, uri.authority.port))
 
         val serverBinding = Http()
@@ -211,9 +213,9 @@ class Solid(
                   PointedGraph(keyIdUrl.toRdfNode, g.content).asKeyIdInfo match
                    case Some(kidInfo) => IO.fromTry(jw2rca(kidInfo.pka, keyIdUrl))
                    case None => IO.fromTry(Failure(http.AuthException(
-                           null, // todo
-                           s"Could not find or parse security:publicKeyJwk relation in <$keyIdUrl>"
-                         )))
+                       null, // todo
+                       s"Could not find or parse security:publicKeyJwk relation in <$keyIdUrl>"
+                     )))
                }
            case r: Rejected => IO.fromTry(Failure(new Throwable(r.toString))) // todo
          }

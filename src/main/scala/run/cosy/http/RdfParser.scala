@@ -53,12 +53,12 @@ object RdfParser:
    def rdfRequest(uri: Uri): HttpRequest =
      HttpRequest(uri = uri.withoutFragment)
        .addHeader(Accept(
-           `text/turtle`,
-           `application/rdf+xml`,
-           `application/n-triples`,
-           `application/ld+json`.withQValue(0.8) // todo: need to update parser in banana
-           // `text/html`.withQValue(0.2)
-         )) // we can't specify that we want RDFa in our markup
+         `text/turtle`,
+         `application/rdf+xml`,
+         `application/n-triples`,
+         `application/ld+json`.withQValue(0.8) // todo: need to update parser in banana
+         // `text/html`.withQValue(0.2)
+       )) // we can't specify that we want RDFa in our markup
 
    def unmarshalToRDF(
        resp: HttpResponse,

@@ -159,17 +159,17 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                s"Message should not reach this point."
            )
            cmsg.respondWith(HttpResponse(
-               InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
          case StateSaved(_, cmsg) =>
            context.log.warn(
              s"received a state saved on source <$uri> at <$linkPath> that has been does not have a symlink!"
            )
            cmsg.respondWith(HttpResponse(
-               InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
          case script: ScriptMsg[?] =>
            import script.given
            script.continue
@@ -201,9 +201,9 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
         Files.delete(linkPath)
         // is there a more specific error to be had?
         cmd.respondWith(HttpResponse(
-            StatusCodes.InternalServerError,
-            entity = HttpEntity("upload unsucessful")
-          ))
+          StatusCodes.InternalServerError,
+          entity = HttpEntity("upload unsucessful")
+        ))
         Behaviors.stopped
       case StateSaved(pos, cmd) =>
         // todo: we may only want to check that the symlinks are correct
@@ -216,18 +216,18 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
         Files.move(tmpSymLinkPath, linkPath, ATOMIC_MOVE)
         val att = Files.readAttributes(pos, classOf[BasicFileAttributes])
         cmd.respondWith(HttpResponse(
-            Created,
-            Location(uri) :: Link(AclLink :: LDPR(uri) :: Nil) :: AllowHeader :: headersFor(att),
-            HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
-          ))
+          Created,
+          Location(uri) :: Link(AclLink :: LDPR(uri) :: Nil) :: AllowHeader :: headersFor(att),
+          HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
+        ))
         behavior
       case route: Route =>
         // todo: here we could change the behavior to one where requests are stashed until the upload
         // is finished, or where they are returned with a "please wait" response...
         route.msg.respondWith(HttpResponse(
-            Conflict,
-            entity = HttpEntity("the resource is not yet completely uploaded. Try again later.")
-          ))
+          Conflict,
+          entity = HttpEntity("the resource is not yet completely uploaded. Try again later.")
+        ))
         Behaviors.same
       case script: ScriptMsg[?] =>
         import script.given
@@ -305,11 +305,11 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
               // we do this in 2 stages to later be optimised to 1 later
               // 1. we want to build a Map[Uri,Graph] from the Cofree structure
 
-              val mapDS: Map[Uri, Rdf#Graph] = Cofree.cata[GraF, Meta, Map[Uri, Rdf#Graph]](dt)(
-                (meta: Meta, grds: GraF[Map[Uri, Rdf#Graph]]) =>
-                  cats.Now(grds.other.fold(Map()) { (m1, m2) =>
-                    m1 ++ m2
-                  } + (meta.url -> grds.graph))
+              val mapDS: Map[Uri, Rdf#Graph] = Cofree.cata[GraF, Meta, Map[Uri,
+                  Rdf#Graph]](dt)((meta: Meta, grds: GraF[Map[Uri, Rdf#Graph]]) =>
+                cats.Now(grds.other.fold(Map()) { (m1, m2) =>
+                  m1 ++ m2
+                } + (meta.url -> grds.graph))
               ).value
 
               import org.eclipse.rdf4j.model.{Model, Resource as eResource, IRI, Value}
@@ -345,10 +345,10 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
               finally
                  out.close
               f(HttpResponse(
-                  StatusCodes.OK,
-                  Seq(),
-                  HttpEntity(`application/trig`.toContentType, new String(out.toByteArray))
-                ))
+                StatusCodes.OK,
+                Seq(),
+                HttpEntity(`application/trig`.toContentType, new String(out.toByteArray))
+              ))
 
            /* Jena version of how to write out TriG
   todo: abstract and move to banana-rdf
@@ -411,9 +411,9 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
                      )
                    )
               case _ => cmd.respondWith(HttpResponse(
-                    StatusCodes.NotImplemented,
-                    entity = HttpEntity("we don't yet deal with PUT for " + cmd.commands)
-                  ))
+                  StatusCodes.NotImplemented,
+                  entity = HttpEntity("we don't yet deal with PUT for " + cmd.commands)
+                ))
           else super.Put(cmd)
         end Put
 
@@ -531,17 +531,17 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                s"Message should not reach this point."
            )
            cmsg.respondWith(HttpResponse(
-               InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
          case StateSaved(_, cmsg) =>
            context.log.warn(
              s"received a state saved on source <$uri> at <$linkPath> that has been does not have a symlink!"
            )
            cmsg.respondWith(HttpResponse(
-               InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
          case script: ScriptMsg[?] =>
            import script.given
            script.continue
@@ -594,17 +594,17 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
            log.warn(s"received Create on resource <$uri> at <$linkPath> that has been deleted! " +
              s"Message should not reach this point.")
            cmsg.respondWith(HttpResponse(
-               InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
          case StateSaved(_, cmsg) =>
            log.warn(
              s"received a state saved on source <$uri> at <$linkPath> that has been deleted!"
            )
            cmsg.respondWith(HttpResponse(
-               InternalServerError,
-               entity = HttpEntity("please contact admin")
-             ))
+             InternalServerError,
+             entity = HttpEntity("please contact admin")
+           ))
          case script: ScriptMsg[?] =>
            import script.given
            script.continue
@@ -723,9 +723,9 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                      doPlainGet(cmdmsg, req, f)
                    case OPTIONS =>
                      cmdmsg.respondWith(HttpResponse( // todo, add more
-                         NoContent,
-                         AllowHeader :: Nil
-                       ))
+                       NoContent,
+                       AllowHeader :: Nil
+                     ))
                      Behaviors.same
                    // ACR: Here we can't allow anything in - only RDF graphs, and perhaps only those with specific shapes
                    //   but on the other hand that means the verification is happening at the RDF Graph layer.
@@ -741,10 +741,10 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                    case DELETE => Delete(cmdmsg)
                    case m =>
                      cmdmsg.respondWith(HttpResponse(
-                         MethodNotAllowed,
-                         AllowHeader :: Nil,
-                         HttpEntity(s"method $m not supported")
-                       ))
+                       MethodNotAllowed,
+                       AllowHeader :: Nil,
+                       HttpEntity(s"method $m not supported")
+                     ))
                      Behaviors.same
                 case Get(url, k) =>
                   // 1. todo: check if we have cached version, if so continue with that
@@ -774,12 +774,12 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                // the upload failed, but we can return info about the current state
                val att = Files.readAttributes(linkTo, classOf[BasicFileAttributes])
                cmd.respondWith(HttpResponse(
-                   StatusCodes.InternalServerError,
-                   Location(uri) :: AllowHeader :: Link(
-                     AclLink :: LDPR(uri) :: VersionLinks(lastVersion)
-                   ) :: headersFor(att),
-                   entity = HttpEntity("PUT unsucessful")
-                 ))
+                 StatusCodes.InternalServerError,
+                 Location(uri) :: AllowHeader :: Link(
+                   AclLink :: LDPR(uri) :: VersionLinks(lastVersion)
+                 ) :: headersFor(att),
+                 entity = HttpEntity("PUT unsucessful")
+               ))
                Behaviors.same
              case StateSaved(fpath, cmd) =>
                import java.nio.file.StandardCopyOption.ATOMIC_MOVE
@@ -791,12 +791,12 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                // todo: state saved should just return the VersionInfo.
                val att = Files.readAttributes(fpath, classOf[BasicFileAttributes])
                cmd.respondWith(HttpResponse(
-                   OK,
-                   Location(uri) :: AllowHeader :: Link(
-                     AclLink :: LDPR(uri) :: VersionLinks(lastVersion + 1)
-                   ) :: headersFor(att),
-                   HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
-                 ))
+                 OK,
+                 Location(uri) :: AllowHeader :: Link(
+                   AclLink :: LDPR(uri) :: VersionLinks(lastVersion + 1)
+                 ) :: headersFor(att),
+                 HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
+               ))
                VersionsInfo(lastVersion + 1, fpath).NormalBehavior
          }
       end NormalBehavior
@@ -829,10 +829,10 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
          // 1. we filter out all unaceptable requests, and return error responses to those
          if PUTstarted then
             cmd.respondWith(HttpResponse(
-                StatusCodes.Conflict,
-                Seq(),
-                HttpEntity("PUT already ongoing. Please try later")
-              ))
+              StatusCodes.Conflict,
+              Seq(),
+              HttpEntity("PUT already ongoing. Please try later")
+            ))
             return ()
 
          import headers.{`If-Match`, `If-Unmodified-Since`, EntityTag}
@@ -842,14 +842,14 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 
          if imh.isEmpty && ium.isEmpty then
             cmd.respondWith(HttpResponse(
-                StatusCodes.PreconditionRequired,
-                Location(uri) :: AllowHeader :: Link(
-                  AclLink :: LDPR(uri) :: VersionLinks(lastVersion)
-                ) :: headersFor(att),
-                HttpEntity(
-                  "LDP Servers requires valid `If-Match` or `If-Unmodified-Since` headers for a PUT"
-                )
-              ))
+              StatusCodes.PreconditionRequired,
+              Location(uri) :: AllowHeader :: Link(
+                AclLink :: LDPR(uri) :: VersionLinks(lastVersion)
+              ) :: headersFor(att),
+              HttpEntity(
+                "LDP Servers requires valid `If-Match` or `If-Unmodified-Since` headers for a PUT"
+              )
+            ))
             return ()
 
          val precond1 = imh.exists { case `If-Match`(range) =>
@@ -862,14 +862,14 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
            }
          if !(precond1 || (precond2.size > 0 && precond2.forall(_ == true))) then
             cmd.respondWith(HttpResponse(
-                StatusCodes.PreconditionFailed,
-                Location(uri) :: AllowHeader :: Link(
-                  AclLink :: LDPR(uri) :: VersionLinks(lastVersion)
-                ) :: headersFor(att),
-                HttpEntity(
-                  "LDP Servers requires valid `If-Match` or `If-Unmodified-Since` headers for a PUT"
-                )
-              ))
+              StatusCodes.PreconditionFailed,
+              Location(uri) :: AllowHeader :: Link(
+                AclLink :: LDPR(uri) :: VersionLinks(lastVersion)
+              ) :: headersFor(att),
+              HttpEntity(
+                "LDP Servers requires valid `If-Match` or `If-Unmodified-Since` headers for a PUT"
+              )
+            ))
             return ()
 
          saveContent(cmd, req)
@@ -887,11 +887,11 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
          // todo: here we should change the behavior to one where requests are stashed until the upload
          // is finished, or where they are returned with a "please wait" response...
          case _ => cmd.respondWith(HttpResponse(
-               StatusCodes.Conflict,
-               Seq(),
-               HttpEntity("At present we can only accept a PUT with the same " +
-                 "Media Type as previously sent. Which is " + extension(linkTo))
-             ))
+             StatusCodes.Conflict,
+             Seq(),
+             HttpEntity("At present we can only accept a PUT with the same " +
+               "Media Type as previously sent. Which is " + extension(linkTo))
+           ))
 
       private def GetVersionResponse(path: FPath, ver: Int, mt: MediaType): HttpResponse =
          context.log.info(s"GetVersionResponse( $path, $ver, $mt)")
@@ -1011,9 +1011,9 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
               case e: UnsupportedOperationException =>
                 log.error("Operating Systems does not support links.", e)
                 cmd.respondWith(HttpResponse(
-                    InternalServerError,
-                    entity = HttpEntity(`text/plain(UTF-8)`, "Server error")
-                  ))
+                  InternalServerError,
+                  entity = HttpEntity(`text/plain(UTF-8)`, "Server error")
+                ))
                 // todo: one could avoid closing the whole system and instead shut down the root solid actor (as other
                 // parts of the actor system could continue working
                 context.system.terminate()
@@ -1021,20 +1021,20 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
               case e: NotLinkException =>
                 log.warn(s"type of <$linkPath> changed since actor started", e)
                 cmd.respondWith(HttpResponse(
-                    Conflict,
-                    entity = HttpEntity(`text/plain(UTF-8)`, "Resource seems to have changed type")
-                  ))
+                  Conflict,
+                  entity = HttpEntity(`text/plain(UTF-8)`, "Resource seems to have changed type")
+                ))
                 return Behaviors.stopped
               case e: SecurityException =>
                 log.error(s"Could not read symbolic link <$linkPath> on DELETE request", e)
                 // todo: returning an InternalServer error as this is not expected behavior
                 cmd.respondWith(HttpResponse(
-                    InternalServerError,
-                    entity = HttpEntity(
-                      `text/plain(UTF-8)`,
-                      "There was a problem deleting resource on server. Contact Admin."
-                    )
-                  ))
+                  InternalServerError,
+                  entity = HttpEntity(
+                    `text/plain(UTF-8)`,
+                    "There was a problem deleting resource on server. Contact Admin."
+                  )
+                ))
                 return Behaviors.stopped
               case e: IOException =>
                 log.error(
@@ -1054,9 +1054,9 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                   e
                 )
                 cmd.respondWith(HttpResponse(
-                    InternalServerError,
-                    entity = HttpEntity(`text/plain(UTF-8)`, "Server error")
-                  ))
+                  InternalServerError,
+                  entity = HttpEntity(`text/plain(UTF-8)`, "Server error")
+                ))
                 // todo: one could avoid closing the whole system and instead shut down the root solid actor (as other
                 // parts of the actor system could continue working
                 context.system.terminate()
@@ -1077,17 +1077,17 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                   e
                 )
                 cmd.respondWith(HttpResponse(
-                    InternalServerError,
-                    entity =
-                      HttpEntity(`text/plain(UTF-8)`, "Server error. Potentially badly configured.")
-                  ))
+                  InternalServerError,
+                  entity =
+                    HttpEntity(`text/plain(UTF-8)`, "Server error. Potentially badly configured.")
+                ))
                 return Behaviors.stopped
               case e: IOException =>
                 log.error(s"Could not create archive dir <$archiveDir> for DELETE", e)
                 cmd.respondWith(HttpResponse(
-                    InternalServerError,
-                    entity = HttpEntity(`text/plain(UTF-8)`, "could not delete, contact admin")
-                  ))
+                  InternalServerError,
+                  entity = HttpEntity(`text/plain(UTF-8)`, "could not delete, contact admin")
+                ))
                 return Behaviors.stopped
 
          try // move link to archive. At the minimum this will result in a delete
@@ -1100,10 +1100,10 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                 e
               )
               cmd.respondWith(HttpResponse(
-                  InternalServerError,
-                  entity =
-                    HttpEntity(`text/plain(UTF-8)`, "Server badly configured. Contact admin.")
-                ))
+                InternalServerError,
+                entity =
+                  HttpEntity(`text/plain(UTF-8)`, "Server badly configured. Contact admin.")
+              ))
               return Behaviors.stopped
             case e: DirectoryNotEmptyException =>
               log.error(
@@ -1112,10 +1112,10 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                 e
               )
               cmd.respondWith(HttpResponse(
-                  Conflict,
-                  entity =
-                    HttpEntity(`text/plain(UTF-8)`, "Coherence problem with resources. Try again.")
-                ))
+                Conflict,
+                entity =
+                  HttpEntity(`text/plain(UTF-8)`, "Coherence problem with resources. Try again.")
+              ))
               return Behaviors.stopped
             case e: AtomicMoveNotSupportedException =>
               log.error(
@@ -1123,26 +1123,26 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                 e
               )
               cmd.respondWith(HttpResponse(
-                  InternalServerError,
-                  entity =
-                    HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
-                ))
+                InternalServerError,
+                entity =
+                  HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
+              ))
               return Behaviors.stopped
             case e: SecurityException =>
               log.error(s"Security Exception trying move link <$linkPath> to archive.", e)
               cmd.respondWith(HttpResponse(
-                  InternalServerError,
-                  entity =
-                    HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
-                ))
+                InternalServerError,
+                entity =
+                  HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
+              ))
               return Behaviors.stopped
             case e: IOException =>
               log.error(s"IOException trying move link <$linkPath> to archive.", e)
               cmd.respondWith(HttpResponse(
-                  InternalServerError,
-                  entity =
-                    HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
-                ))
+                InternalServerError,
+                entity =
+                  HttpEntity(`text/plain(UTF-8)`, "Server programming or installation error")
+              ))
               return Behaviors.stopped
             case e: FileAlreadyExistsException =>
               log.warn(
@@ -1163,12 +1163,12 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                      e
                    )
                    cmd.respondWith(HttpResponse(
-                       Conflict,
-                       entity = HttpEntity(
-                         `text/plain(UTF-8)`,
-                         "Coherence problem with resources. Try again."
-                       )
-                     ))
+                     Conflict,
+                     entity = HttpEntity(
+                       `text/plain(UTF-8)`,
+                       "Coherence problem with resources. Try again."
+                     )
+                   ))
                    return Behaviors.stopped
                  case e: SecurityException =>
                    log.error(
@@ -1177,10 +1177,10 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                      e
                    )
                    cmd.respondWith(HttpResponse(
-                       InternalServerError,
-                       entity =
-                         HttpEntity(`text/plain(UTF-8)`, "Server badly configured. Contact admin.")
-                     ))
+                     InternalServerError,
+                     entity =
+                       HttpEntity(`text/plain(UTF-8)`, "Server badly configured. Contact admin.")
+                   ))
                    return Behaviors.stopped
                  case e: IOException =>
                    log.error(
@@ -1189,9 +1189,9 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                      e
                    )
                    cmd.respondWith(HttpResponse(
-                       InternalServerError,
-                       entity = HttpEntity(`text/plain(UTF-8)`, "Problem on server. Contact admin.")
-                     ))
+                     InternalServerError,
+                     entity = HttpEntity(`text/plain(UTF-8)`, "Problem on server. Contact admin.")
+                   ))
                    return Behaviors.stopped
          try
             Files.createSymbolicLink(linkPath, linkPath.getFileName)

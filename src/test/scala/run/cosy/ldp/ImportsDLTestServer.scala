@@ -44,11 +44,13 @@ object ImportsDLTestServer extends TestServer:
    val cardAcl = podGr(URI("/People/Berners-Lee/card.acl") -- owl
      .imports ->- URI("/People/Berners-Lee/.acl"))
 
-   val BLAcl = podGr(URI("/People/Berners-Lee/.acl#TimRl").a(wac.Authorization)
-     -- wac.agent ->- (URI("/People/Berners-Lee/card#i")
-       -- wac.accessToClass ->- (
-         bnode() -- containedIn ->- URI("/People/Berners-Lee/")
-       ))) union podGr(
+   val BLAcl = podGr(
+     URI("/People/Berners-Lee/.acl#TimRl").a(wac.Authorization)
+       -- wac.agent ->- (URI("/People/Berners-Lee/card#i")
+         -- wac.accessToClass ->- (
+           bnode() -- containedIn ->- URI("/People/Berners-Lee/")
+         ))
+   ) union podGr(
      URI("/People/Berners-Lee/.acl") -- owl.imports ->- URI("/.acl")
    )
 
@@ -59,10 +61,12 @@ object ImportsDLTestServer extends TestServer:
        -- wac.accessToClass ->- (bnode() -- containedIn ->- URI("/People/"))
    ) union podGr(URI("/People/.acl") -- owl.imports ->- URI("/.acl"))
 
-   val rootACL = podGr(URI("/.acl#Admin").a(wac.Authorization)
-     -- wac.mode ->- wac.Control
-     -- wac.agentClass ->- URI("/Admins#g")
-     -- wac.accessToClass ->- bnode("allContents")) union podGr(
+   val rootACL = podGr(
+     URI("/.acl#Admin").a(wac.Authorization)
+       -- wac.mode ->- wac.Control
+       -- wac.agentClass ->- URI("/Admins#g")
+       -- wac.accessToClass ->- bnode("allContents")
+   ) union podGr(
      URI("/.acl#Public").a(wac.Authorization)
        -- wac.accessTo ->- URI("/")
        -- wac.mode ->- wac.Read

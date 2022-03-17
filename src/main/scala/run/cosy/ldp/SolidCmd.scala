@@ -95,8 +95,8 @@ object SolidCmd:
               url
             )
          x <- k(tryResp.getOrElse(
-             Response(Meta(url, StatusCodes.InternalServerError), Failure(new Throwable("todo")))
-           ))
+           Response(Meta(url, StatusCodes.InternalServerError), Failure(new Throwable("todo")))
+         ))
       yield x
 
    def plainScript(req: HttpRequest): Script[HttpResponse] =
