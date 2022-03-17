@@ -104,6 +104,7 @@ object Guard:
          agent match // todo: deal with more cases such as OpenID, ...
           case KeyIdAgent(keyIdUri, _) => agentId == keyIdUri
           case _                       => false
+
       if hints.path.isEmpty
       then Free.pure(authorize(rules, agent))
       else if !sanityCheckHead && !sanityCheckLast then

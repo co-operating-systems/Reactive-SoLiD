@@ -29,7 +29,6 @@ ThisBuild / scmInfo := Some(ScmInfo(
 //see https://github.com/typelevel/sbt-typelevel/issues/177
 ThisBuild / githubWorkflowTargetBranches := Seq("main")
 
-
 // does not work for some reason
 //ThisBuild / headerLicense := Some(HeaderLicense.ALv2(
 //  "2021",
