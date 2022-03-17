@@ -72,7 +72,7 @@ class LDPCmdTest extends munit.FunSuite:
      // The nesting of Graphs makes sense if say the request were fetched via a certain agent (a proxy perhaps).
      // In that case nested graph metadata would really need to include Agent information.
      val urlTree = ds2.mapBranchingS(new (GraF ~> Set):
-        def apply[A](gr: GraF[A]): Set[A] = gr.other
+          def apply[A](gr: GraF[A]): Set[A] = gr.other
      ).map(_.url).forceAll
 
      assertEquals(
@@ -80,12 +80,12 @@ class LDPCmdTest extends munit.FunSuite:
        Cofree(
          Uri("https://w3.org/People/Berners-Lee/card.acl"),
          Now(Set(Cofree(
-           Uri("https://w3.org/People/Berners-Lee/.acl"),
-           Now(Set(
-             Cofree(Uri("https://w3.org/People/.acl"), Now(Set())),
-             Cofree(Uri("https://w3.org/.acl"), Now(Set()))
-           ))
-         )))
+               Uri("https://w3.org/People/Berners-Lee/.acl"),
+               Now(Set(
+                   Cofree(Uri("https://w3.org/People/.acl"), Now(Set())),
+                   Cofree(Uri("https://w3.org/.acl"), Now(Set()))
+                 ))
+             )))
        )
      )
      // we want to see if the nesting is correct, even if we don't really need the nesting at this point
@@ -102,9 +102,7 @@ class LDPCmdTest extends munit.FunSuite:
      val BLAcl   = db(ws.path("/People/Berners-Lee/.acl"))
      // the fixpoints of GF is just a non-empty set of Graphs.
      val g: Graphs = Fix(GraF(
-       cardAcl,
-       Set(
-         Fix(GraF(BLAcl, Set()))
-       )
-     ))
+         cardAcl,
+         Set(Fix(GraF(BLAcl, Set())))
+       ))
    }

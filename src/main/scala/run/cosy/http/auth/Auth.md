@@ -420,36 +420,28 @@ foaf:foaf owl:propertyChainAxiom (foaf:knows foaf:knows);
    :domain foaf:Person;
    :range foaf:Person.
 ```
-Next we can define two classes: Tim's direct foaf:knows relations and the class of those
-for which there is a two step foaf:knows path
+Next we can define a superproperty of `foaf:knows` and `foaf:foaf` so that we can capture 
+people who know each other directly and indirectly. 
+
 ```Turtle
-<#TimFriends> a owl:Class;
-  :comment ”The class of people that Tim foaf:knows”;
-  owl:equivalentClass [ a owl:Restriction ;
-    :comment "foaf:knows is not usually used in a symetric manner";
-    owl:onProperty [ owl:inverseOf foaf:knows ];
-    owl:hasValue <https://www.w3.org/People/Berners-Lee/#i>;
-  ].
-  
-<#TimFoaf> a owl:Class;
-  :comment ”The class of friends of friends of Tim”;
-  owl:equivalentClass [ a owl:Restriction ;
-     owl:onProperty [ owl:inverseOf foaf:foaf ];
-     owl:hasValue <https://www.w3.org/People/Berners-Lee/#i>;
-  ].
+# It would be nice if one could state that knows2 was exactly either one of those two.
+# Still we don't need more than this
+
+foaf:knows rdfs:subPropertyOf foaf:knows2 .
+foaf:foaf rdfs:subPropertyOf foaf:knows2 . 
 ```
 Having defined those we can define a rule that gives Read access to the union
 of the previous two groups.
 
 ```Turtle
-<#foafRule> wac:default <friends>;
+<#foafRule> wac:default <friends/>;
    wac:mode wac:Read;
    wac:agentClass <#foaf> .
     
-<#foaf> owl:equivalentClass [
-      owl:unionOf (<#TimFoaf> <#TimFriends>)
-   ].
-
+<#foaf> owl:equivalentClass [ a owl:Restriction ;
+    owl:onProperty [ owl:inverseOf foaf:knows2 ];
+    owl:hasValue <https://www.w3.org/People/Berners-Lee/#i>;
+  ].
 ```
 
 then a hint could be written like this
@@ -460,20 +452,22 @@ NOTE: '\' line wrapping per RFC 8792
 WAC-Hint: ( "<.acl#foafRule>" "wac:agentClass";rel "<.acl#foaf>" \
    "rdf:type";rev;reason=r1 \
    "<https://alice.name/#i>" "security:controller";rev keyId )
-WAC-Hint: r1=( "<https://www.w3.org/People/Berners-Lee/#i>" "foaf:foaf";rel;reason=r2 "<https://alice.name/#i>")
+WAC-Hint: r1=( "<https://www.w3.org/People/Berners-Lee/#i>" "foaf:knows2";rel;reason=r2 "<https://alice.name/#i>")
 WAC-Hint: r2=( "<https://www.w3.org/People/Berners-Lee/#i>" "foaf:knows";rel <https://bblfish.net/people/henry/card/#me> \
     "foaf:knows";rel "<https://alice.name/#i>"
 ```
 
-In the above I am attempting to find a way to giving reasons for a relation seperately, in a 
+In the above I am attempting to find a way to giving reasons for a relation separately, in a 
 different `WAC-Hint` which decomposes the relation into constituent parts. (This is just
-a first draft of an idea). So in the main proof path we have that alice is of 
+a first draft of an idea). So in the main proof path we have that Alice is of 
 type `<.acl#foaf>` which matches what is required of the rule. But we then need to explain why
-she is member of that class, and that is because she is a member of `<#TimFoaf>` and that is explained
-because there is a link from Tim to alice via `foaf:foaf`. That link itself needs to be
-decomposed into two `foaf:knows` relations which is done in `r2`.
+she is member of that class, and that is because Tim is related to her via `foaf:knows2`. 
+That link itself needs to be decomposed into two `foaf:knows` relations which is done in `r2`.
 
-A lot of detail is missing in those rules. 
+A lot of detail is missing in those rules. But the idea is that we start with the rules
+defined in the WAC Document, and follow the links to the key. Sometimes a link we follow can
+be proven as being built from smaller links for which we also can find justifying evidence
+by following links.
 
 We would like to perhaps simplify the reasoning also. We would like a generic equivalent 
 of `<#foaf>` where we could just plug in the original person, and specify that the proof

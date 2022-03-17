@@ -75,9 +75,9 @@ abstract class AkkaSpec(_system: ActorSystem)
    def this(configMap: Map[String, ?]) = this(AkkaSpec.mapToConfig(configMap))
 
    def this() = this(ActorSystem(
-     TestKitUtils.testNameFromCallStack(classOf[AkkaSpec], "".r),
-     AkkaSpec.testConf
-   ))
+       TestKitUtils.testNameFromCallStack(classOf[AkkaSpec], "".r),
+       AkkaSpec.testConf
+     ))
 
    val log: LoggingAdapter = Logging(system, Logging.simpleName(this))
 

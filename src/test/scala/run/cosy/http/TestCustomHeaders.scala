@@ -30,10 +30,10 @@ class TestCustomHeaders extends munit.FunSuite:
      val sv: Slug = new Slug("slug:value".asClean)
      assertEquals(sv.value, "slug%3Avalue")
      RawHeader("Slug", "slug%3Avalue") match
-     case Slug(x) => assertEquals(x.toString, "slug:value")
-     case _       => fail
+      case Slug(x) => assertEquals(x.toString, "slug:value")
+      case _       => fail
 
-     // will match, header keys are case insensitive
+      // will match, header keys are case insensitive
      val atomEg   = Slug("The Beach at Sète".asClean)
      val Slug(v5) = atomEg
      assertEquals(atomEg.value, "The+Beach+at+S%C3%A8te", atomEg)
@@ -42,8 +42,8 @@ class TestCustomHeaders extends munit.FunSuite:
 
      val rawAtom = RawHeader("Slug", "The Beach at S%C3%A8te")
      rawAtom match
-     case Slug(x) => assertEquals(x.toString, "The Beach at Sète")
-     case _       => fail
+      case Slug(x) => assertEquals(x.toString, "The Beach at Sète")
+      case _       => fail
      assertEquals(rawAtom.name, "Slug")
      assertEquals(rawAtom.value, "The Beach at S%C3%A8te")
 
@@ -58,6 +58,6 @@ class TestCustomHeaders extends munit.FunSuite:
      val request = HttpRequest().addHeader(slug)
      assertEquals(request.header[Slug], Option(slug))
      request.header[Slug] match
-     case Some(RawHeader(key, value)) => assertEquals(value, "blog+4")
-     case _                           => fail
+      case Some(RawHeader(key, value)) => assertEquals(value, "blog+4")
+      case _                           => fail
    }

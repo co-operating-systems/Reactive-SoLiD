@@ -79,9 +79,9 @@ class TestHttpSigSpecFn extends munit.FunSuite:
      Uri("/comments/"),
      Seq(
        Authorization(GenericHttpCredentials(
-         "HttpSig",
-         Map("proof" -> "sig1", "cred" -> "https://age.com/cred/xyz#")
-       )),
+           "HttpSig",
+           Map("proof" -> "sig1", "cred" -> "https://age.com/cred/xyz#")
+         )),
        Accept(`text/turtle`.withQValue(1.0), exMediaRanges*)
      )
    )
@@ -96,17 +96,17 @@ class TestHttpSigSpecFn extends munit.FunSuite:
 
    test("intro example") {
      val Some(si) = SigInput(IList(`@request-target`.sf, authorization.sf)(
-       Token("keyid")   -> sf"/keys/alice#",
-       Token("created") -> SfInt(t.toInstant(ZoneOffset.UTC).toEpochMilli / 1000),
-       Token("expires") -> SfInt(t2.toInstant(ZoneOffset.UTC).toEpochMilli / 1000)
-     ))
+         Token("keyid")   -> sf"/keys/alice#",
+         Token("created") -> SfInt(t.toInstant(ZoneOffset.UTC).toEpochMilli / 1000),
+         Token("expires") -> SfInt(t2.toInstant(ZoneOffset.UTC).toEpochMilli / 1000)
+       ))
      val Success(req1signingStr) = req1Ex.signingString(si)
      val signerF: IO[ByteVector => IO[ByteVector]] =
        for
           spec <- IO.fromTry(BouncyJavaPEMUtils.getPrivateKeySpec(
-            `test-key-rsa-pss`.privatePk8Key,
-            `test-key-rsa-pss`.keyAlg
-          ))
+              `test-key-rsa-pss`.privatePk8Key,
+              `test-key-rsa-pss`.keyAlg
+            ))
           f <- bobcats.Signer[IO].build(spec, bobcats.AsymmetricKeyAlg.`rsa-pss-sha512`)
        yield f
 

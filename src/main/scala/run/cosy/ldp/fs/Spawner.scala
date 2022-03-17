@@ -25,9 +25,9 @@ class Spawner(val context: ActorContext[BasicContainer.AcceptMsg]) extends AnyVa
    ): Ref =
       import org.slf4j.Logger
       dir match
-      case d: DirAtt          => spawnDir(d, url)
-      case s: SymLink         => spawnSymLink(s, url)
-      case m: ManagedResource => spawnManaged(m, url)
+       case d: DirAtt          => spawnDir(d, url)
+       case s: SymLink         => spawnSymLink(s, url)
+       case m: ManagedResource => spawnManaged(m, url)
 
    def spawnDir(dir: DirAtt, url: Uri)(
        using reg: ResourceRegistry

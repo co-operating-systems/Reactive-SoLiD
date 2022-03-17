@@ -33,14 +33,14 @@ class TestAttributesFn extends munit.FunSuite:
       assert(slatTry.isSuccess)
       val slatt: APath = slatTry.get
       slatt match
-      case symLink: Attributes.SymLink =>
-        import java.nio.file.LinkOption
-        assertEquals(symLink.path, dirPath.resolve("hello"))
-        assertEquals(symLink.to.toString, "hello.txt", slatt)
-        assertEquals(sl.to, symLink.to, slatt)
-        assert(Files.exists(symLink.path, LinkOption.NOFOLLOW_LINKS))
-        assert(!Files.exists(symLink.path))
-        assert(!Files.exists(dirPath.resolve("hello.txt")))
-      case _ => assert(false, slatt)
+       case symLink: Attributes.SymLink =>
+         import java.nio.file.LinkOption
+         assertEquals(symLink.path, dirPath.resolve("hello"))
+         assertEquals(symLink.to.toString, "hello.txt", slatt)
+         assertEquals(sl.to, symLink.to, slatt)
+         assert(Files.exists(symLink.path, LinkOption.NOFOLLOW_LINKS))
+         assert(!Files.exists(symLink.path))
+         assert(!Files.exists(dirPath.resolve("hello.txt")))
+       case _ => assert(false, slatt)
 
    }

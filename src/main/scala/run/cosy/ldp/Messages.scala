@@ -39,8 +39,8 @@ object Messages:
      reg.getActorRef(uriPath).map { (remaining, sendTo) =>
        sendTo ! {
          remaining match
-         case Nil          => WannaDo(msg)
-         case head :: tail => RouteMsg(NonEmptyList.fromSeq(head, tail.toSeq), msg)
+          case Nil          => WannaDo(msg)
+          case head :: tail => RouteMsg(NonEmptyList.fromSeq(head, tail.toSeq), msg)
        }
      }
 
@@ -62,39 +62,39 @@ object Messages:
       def target: Uri = commands.url
 
       def continue(x: Script[R]): Unit = x.resume match
-      case Right(answer) => replyTo ! answer
-      case Left(next) =>
-        val c: CmdMessage[R] = CmdMessage[R](next, from, replyTo)
-        send(c, next.url.path)
+       case Right(answer) => replyTo ! answer
+       case Left(next) =>
+         val c: CmdMessage[R] = CmdMessage[R](next, from, replyTo)
+         send(c, next.url.path)
 
       def respondWithScr(res: HttpResponse): ScriptMsg[R] =
         commands match
-        case Plain(req, k) => ScriptMsg(k(res), from, replyTo)
-        case g @ Get(u, k) =>
-          val x: Script[R] = k(Response(
-            Meta(g.url, res.status, res.headers),
-            Failure(Exception(
-              "what should I put here? We can only put a failure I think because the " +
-                "response to a Get should be a Graph. So unless this is a serialised graph..."
-            ))
-          ))
-          ScriptMsg(x, from, replyTo)
-        case Wait(f, u, k) => ??? // not sure what to do here!
+         case Plain(req, k) => ScriptMsg(k(res), from, replyTo)
+         case g @ Get(u, k) =>
+           val x: Script[R] = k(Response(
+               Meta(g.url, res.status, res.headers),
+               Failure(Exception(
+                   "what should I put here? We can only put a failure I think because the " +
+                     "response to a Get should be a Graph. So unless this is a serialised graph..."
+                 ))
+             ))
+           ScriptMsg(x, from, replyTo)
+         case Wait(f, u, k) => ??? // not sure what to do here!
 
-        /** If this is a Plain Http Request then all responses can go through here. Otherwise, this
-          * actually indicates an error, since the constructed object is not returned. This smells
-          * like we have a type problem here
-          */
+         /** If this is a Plain Http Request then all responses can go through here. Otherwise, this
+           * actually indicates an error, since the constructed object is not returned. This smells
+           * like we have a type problem here
+           */
       def respondWith(res: HttpResponse): Unit =
         commands match
-        case Plain(req, k) => continue(k(res))
-        case g @ Get(u, k) =>
-          val x: Script[R] = k(Response(
-            Meta(g.url, res.status, res.headers),
-            Failure(Exception("what should I put here?"))
-          ))
-          continue(x)
-        case Wait(f, u, k) => ??? // not sure what to do here!
+         case Plain(req, k) => continue(k(res))
+         case g @ Get(u, k) =>
+           val x: Script[R] = k(Response(
+               Meta(g.url, res.status, res.headers),
+               Failure(Exception("what should I put here?"))
+             ))
+           continue(x)
+         case Wait(f, u, k) => ??? // not sure what to do here!
 
       /** Here we redirect the message to the new resource. BUT! todo: should the redirect be
         * implemented automatically, or be something for the monad construction layer? The latter
@@ -121,10 +121,10 @@ object Messages:
    ) extends Cmd:
       // todo: this code duplicates method from CmdMessage
       def continue: Unit = script.resume match
-      case Right(answer) => replyTo ! answer
-      case Left(next) =>
-        val c: CmdMessage[R] = CmdMessage[R](next, from, replyTo)
-        send(c, next.url.path)
+       case Right(answer) => replyTo ! answer
+       case Left(next) =>
+         val c: CmdMessage[R] = CmdMessage[R](next, from, replyTo)
+         send(c, next.url.path)
 
    /** @param remainingPath
      *   the path to the final resource
@@ -134,8 +134,8 @@ object Messages:
 
       // check that path is not empty before calling  (anti-pattern)
       def nextRoute: Route = remainingPath match
-      case NonEmptyList(_, INil())         => WannaDo(msg)
-      case NonEmptyList(_, ICons(h, tail)) => RouteMsg(nel(h, tail), msg)
+       case NonEmptyList(_, INil())         => WannaDo(msg)
+       case NonEmptyList(_, ICons(h, tail)) => RouteMsg(nel(h, tail), msg)
 
    /** a command to be executed on the resource on which it arrives, after being authorized */
    final case class Do(msg: CmdMessage[?]) extends Act with Route

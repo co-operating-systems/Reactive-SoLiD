@@ -74,17 +74,17 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
         // create Hello
         import _root_.run.cosy.akka.http.headers.Encoding.{given, *}
         rootActr ! Messages.Do(CmdMessage(
-          SolidCmd.plain(
-            HttpRequest(
-              POST,
-              rootUri.withPath(Uri.Path.SingleSlash),
-              Seq(Slug("Hello".asClean)),
-              HttpEntity(ContentTypes.`text/plain(UTF-8)`, "Hello World")
-            )
-          ),
-          WebServerAgent,
-          probe.ref
-        ))
+            SolidCmd.plain(
+              HttpRequest(
+                POST,
+                rootUri.withPath(Uri.Path.SingleSlash),
+                Seq(Slug("Hello".asClean)),
+                HttpEntity(ContentTypes.`text/plain(UTF-8)`, "Hello World")
+              )
+            ),
+            WebServerAgent,
+            probe.ref
+          ))
 
         val HttpResponse(status, hdrs, response, protocol) = probe.receiveMessage()
         assert(status == Created)

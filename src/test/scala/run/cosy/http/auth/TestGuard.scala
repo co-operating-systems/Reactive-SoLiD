@@ -10,6 +10,7 @@ import akka.http.scaladsl.model.{HttpMethods, Uri}
 import run.cosy.RDF
 import run.cosy.RDF.*
 import run.cosy.RDF.ops.*
+import run.cosy.http.auth.Guard.filterRulesFor
 import run.cosy.ldp.rdf.LocatedGraphs.LGs
 import run.cosy.ldp.{ImportsDLTestServer, TestCompiler, TestServer, WebServers}
 import scalaz.Cofree
@@ -44,14 +45,14 @@ class TestGuard extends munit.FunSuite:
    test("test access to resources using root container ACL") {
 
      val aclGraph: LGs = ws.locatedGraphs(rootAcl).get
-
+     val getRules      = Guard.filterRulesFor(aclGraph, rootUri, GET)
      assertEquals(
-       Guard.filterRulesFor(aclGraph, rootUri, GET).points.toSet,
+       getRules.points.toSet,
        Set(podRdfAcl.withFragment("Public"), podRdfAcl.withFragment("Admin"))
      )
 
      assert(
-       Guard.authorize(aclGraph, new Anonymous(), rootUri, GET),
+       Guard.authorize(getRules, new Anonymous),
        "The root acl allows all contents to be READable"
      )
 
@@ -64,7 +65,7 @@ class TestGuard extends munit.FunSuite:
 
      assertEquals(unionAll(fetchedDataSet), LGs(Set(rootAcl.toRdf), aclGraph.graph))
 
-     val auth: Boolean = Guard.authorize(unionAll(fetchedDataSet), new Anonymous(), rootUri, GET)
+     val auth: Boolean = Guard.authorize(getRules, new Anonymous())
      assert(auth, "Anyone can access the root container")
 
      val aclWithImports: LGs =
@@ -87,8 +88,9 @@ class TestGuard extends munit.FunSuite:
      ).foldMap(aclBasic.eval)
      assert(answer2, "The root acl allows all contents to be READable")
 
+     val postRules = Guard.filterRulesFor(aclGraph, rootUri, POST)
      assert(
-       !Guard.authorize(aclGraph, Anonymous(), rootUri, POST),
+       !Guard.authorize(postRules, Anonymous()),
        "Anonymous should not have POST access"
      )
      val answer2Post =

@@ -27,9 +27,9 @@ class DotTest extends munit.FunSuite:
 
    def nameMatch(fn: Dot, name: String, ve: Option[(Int, String)]) =
      name match
-     case fn.File(v, ext) => assertEquals(ve, Some(v, ext))
-     case x if ve == None => assert(true)
-     case err             => assert(false, s"result was $err, but should have been $ve")
+      case fn.File(v, ext) => assertEquals(ve, Some(v, ext))
+      case x if ve == None => assert(true)
+      case err             => assert(false, s"result was $err, but should have been $ve")
 
    test("pattern match") {
      nameMatch(card, "card.acl", None)
@@ -49,6 +49,6 @@ class DotTest extends munit.FunSuite:
 
    test("pattern match on remaingn") {
      card.remaining("card.0") match
-     case Some(List(AsInt(n))) => assert(true)
-     case _                    => assert(false, "what happened")
+      case Some(List(AsInt(n))) => assert(true)
+      case _                    => assert(false, "what happened")
    }

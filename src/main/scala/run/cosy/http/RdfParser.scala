@@ -53,12 +53,12 @@ object RdfParser:
    def rdfRequest(uri: Uri): HttpRequest =
      HttpRequest(uri = uri.withoutFragment)
        .addHeader(Accept(
-         `text/turtle`,
-         `application/rdf+xml`,
-         `application/n-triples`,
-         `application/ld+json`.withQValue(0.8) // todo: need to update parser in banana
-         // `text/html`.withQValue(0.2)
-       )) // we can't specify that we want RDFa in our markup
+           `text/turtle`,
+           `application/rdf+xml`,
+           `application/n-triples`,
+           `application/ld+json`.withQValue(0.8) // todo: need to update parser in banana
+           // `text/html`.withQValue(0.2)
+         )) // we can't specify that we want RDFa in our markup
 
    def unmarshalToRDF(
        resp: HttpResponse,
@@ -80,12 +80,12 @@ object RdfParser:
         }
         // todo: use non blocking parsers
         entity.contentType.mediaType match
-        case `text/turtle`           => parseWith(turtleReader)
-        case `application/rdf+xml`   => parseWith(rdfXMLReader)
-        case `application/n-triples` => parseWith(ntriplesReader)
-        case `application/ld+json`   => parseWith(jsonldReader)
-        // case `text/html` => new SesameRDFaReader()
-        case _ => FastFuture.failed(MissingParserException(string.take(400)))
+         case `text/turtle`           => parseWith(turtleReader)
+         case `application/rdf+xml`   => parseWith(rdfXMLReader)
+         case `application/n-triples` => parseWith(ntriplesReader)
+         case `application/ld+json`   => parseWith(jsonldReader)
+         // case `text/html` => new SesameRDFaReader()
+         case _ => FastFuture.failed(MissingParserException(string.take(400)))
      }
 
    def highestPriortyRDFMediaType(mediaRanges: Seq[MediaRange]): Option[MediaType] =
@@ -105,11 +105,11 @@ object RdfParser:
            HttpEntity.Strict(ContentType(mt, () => HttpCharsets.`UTF-8`), ByteString(str))
          }
       mt match
-      case `text/turtle`           => entity(turtleWriter)
-      case `application/rdf+xml`   => entity(rdfXMLWriter)
-      case `application/n-triples` => entity(ntriplesWriter)
-      case `application/ld+json`   => entity(jsonldCompactedWriter)
-      case _                       => Failure(new Exception(s"we don't have an RDF parser for $mt"))
+       case `text/turtle`           => entity(turtleWriter)
+       case `application/rdf+xml`   => entity(rdfXMLWriter)
+       case `application/n-triples` => entity(ntriplesWriter)
+       case `application/ld+json`   => entity(jsonldCompactedWriter)
+       case _ => Failure(new Exception(s"we don't have an RDF parser for $mt"))
 
    def response(graph: Rdf#Graph, mtypes: Seq[MediaRange]): HttpResponse =
       import akka.http.scaladsl.model.StatusCodes.OK
@@ -123,6 +123,6 @@ object RdfParser:
            response <- toResponseEntity(graph, highestMT)
         yield HttpResponse(OK, entity = response)
       tryResp match
-      case Success(res) => res
-      case Failure(res) =>
-        HttpResponse(StatusCodes.NotAcceptable, entity = HttpEntity(res.toString))
+       case Success(res) => res
+       case Failure(res) =>
+         HttpResponse(StatusCodes.NotAcceptable, entity = HttpEntity(res.toString))

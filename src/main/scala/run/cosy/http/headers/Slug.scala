@@ -34,6 +34,6 @@ object Slug extends BetterCustomHeaderCompanion[Slug]:
 
    // try to generalise later
    def unapply(h: HttpHeader): Option[UnicodeString] = h match
-   case _: (RawHeader | CustomHeader) if (h.lowercaseName == lowercaseName) =>
-     parse(h.value.asEncoded).toOption
-   case _ => None
+    case _: (RawHeader | CustomHeader) if (h.lowercaseName == lowercaseName) =>
+      parse(h.value.asEncoded).toOption
+    case _ => None
