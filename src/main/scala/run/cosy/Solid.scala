@@ -41,7 +41,7 @@ import _root_.scalaz.NonEmptyList
 import _root_.scalaz.NonEmptyList.nel
 import cats.effect.IO
 import run.cosy.http.headers.SelectorOps
-
+import run.cosy.http.Http as cHttp
 import _root_.java.io.{File, FileInputStream}
 import _root_.java.nio.file.{Files, Path}
 import _root_.javax.naming.AuthenticationException
@@ -189,7 +189,7 @@ class Solid(
    // todo: perhaps move to using Future
    import cats.effect.unsafe.implicits.global
 
-   given selectorOps: SelectorOps[HttpRequest] = new AkkaMessageSelectors(
+   given selectorOps: SelectorOps[cHttp.Request[IO,run.cosy.akka.http.AkkaTp.H4]] = new AkkaMessageSelectors[IO](
      true,
      baseUri.authority.host,
      baseUri.effectivePort
@@ -221,7 +221,7 @@ class Solid(
          }
       else // we get it from the web
          ???
-
+         
    lazy val securedRoute: Route = extractRequestContext { (reqc: RequestContext) =>
      HttpSigDirective.httpSignature(reqc)(fetchKeyId(_)(reqc)).optional.tapply {
        case Tuple1(Some(agent)) => routeLdp(agent)

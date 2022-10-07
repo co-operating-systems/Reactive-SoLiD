@@ -5,15 +5,13 @@ import sbt.{CrossVersion, Def, *}
 object Dependencies {
 
   object Versions {
-    val Akka               = "2.6.18"
-    val AkkaHttp           = "10.2.8"
+    val Akka               = "2.6.20"
+    val AkkaHttp           = "10.2.10"
     val scalaz             = "7.4.0-M7"
-    val circe              = "0.14.0-M4"
     val banana             = "0.8.6"
-    val alpakka            = "3.0.4"
-    val bouncy             = "1.68"
-    val refined            = "0.9.23+7-d4890dd0-SNAPSHOT"
-    val catsParse          = "0.3.6"
+    val alpakka            = "4.0.0"
+    val bouncy             = "1.72"
+//    val catsParse          = "0.3.8"
     val catsCore           = "2.7.0"
     val catsFree           = catsCore
     val munit              = "1.0.0-M1"
@@ -124,7 +122,7 @@ object Dependencies {
       * @see
       *   https://mvnrepository.com/artifact/org.typelevel/cats-parse
       */
-    val catsParse = "org.typelevel" %% "cats-parse" % V.catsParse
+//    val catsParse = "org.typelevel" %% "cats-parse" % V.catsParse
 
     /** MIT License
       *
@@ -162,7 +160,7 @@ object Dependencies {
       */
     val catsFree = "org.typelevel" %% "cats-free" % V.catsFree
 
-    val bobcats = "net.bblfish.crypto" %% "bobcats" % "0.2-69106e6-SNAPSHOT"
+    val bobcats = "net.bblfish.crypto" %% "bobcats" % "0.2-7a91946-SNAPSHOT"
 
     /** MIT License
       *
@@ -194,16 +192,14 @@ object Dependencies {
     val disciplineMunit = "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test
 
     val akkaHttpSig =
-      "net.bblfish.crypto" %% "akka-http-signature" % "0.2-0d139dd-20220311T142629Z-SNAPSHOT"
+         "net.bblfish.crypto" %% "akka-http-signature" % "0.2-4233c03-SNAPSHOT"
 
     val all = Seq(
-      catsParse,
       catsCore,
       catsFree,
       alleyCats,
       catsLaws,
       catsEffect,
-      bobcats,
       izumiReflect,
       scalatest,
       munit,

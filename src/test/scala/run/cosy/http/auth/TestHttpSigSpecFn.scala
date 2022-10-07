@@ -100,7 +100,7 @@ class TestHttpSigSpecFn extends munit.FunSuite:
        Token("created") -> SfInt(t.toInstant(ZoneOffset.UTC).toEpochMilli / 1000),
        Token("expires") -> SfInt(t2.toInstant(ZoneOffset.UTC).toEpochMilli / 1000)
      ))
-     val Success(req1signingStr) = req1Ex.signingString(si)
+     val Success(req1signingStr) = req1Ex.signingStr(si)
      val signerF: IO[ByteVector => IO[ByteVector]] =
        for
           spec <- IO.fromTry(BouncyJavaPEMUtils.getPrivateKeySpec(
@@ -112,7 +112,7 @@ class TestHttpSigSpecFn extends munit.FunSuite:
 
      val respio =
        for f <- signerF
-       yield req1Ex.withSigInput[IO](Rfc8941.Token("sig1"), si, f)
+       yield req1Ex.withSigInput(Rfc8941.Token("sig1"), si, f)
 
 //		println("----401 response----")
 //		println(resp1Ex.documented.toRfc8792single())
