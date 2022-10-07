@@ -45,6 +45,7 @@ object HttpSigDirective:
    import run.cosy.http.headers.SelectorOps
    import run.cosy.http.auth.KeyIdAgent
    import run.cosy.http.auth.AkkaHttpMessageSignature.*
+   import scala.language.implicitConversions
    
    /** lifts a request context into an authentication directive.
      * @param reqc

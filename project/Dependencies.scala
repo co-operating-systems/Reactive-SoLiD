@@ -11,7 +11,6 @@ object Dependencies {
     val banana             = "0.8.6"
     val alpakka            = "4.0.0"
     val bouncy             = "1.72"
-//    val catsParse          = "0.3.8"
     val catsCore           = "2.7.0"
     val catsFree           = catsCore
     val munit              = "1.0.0-M1"
@@ -114,15 +113,6 @@ object Dependencies {
       *   [[https://mvnrepository.com/artifact/org.scalatest/scalatest maven]]
       */
     val scalatest = "org.scalatest" %% "scalatest" % V.scalatest % Test
-
-    /** MIT License
-      *
-      * @see
-      *   https://github.com/typelevel/cats-parse
-      * @see
-      *   https://mvnrepository.com/artifact/org.typelevel/cats-parse
-      */
-//    val catsParse = "org.typelevel" %% "cats-parse" % V.catsParse
 
     /** MIT License
       *

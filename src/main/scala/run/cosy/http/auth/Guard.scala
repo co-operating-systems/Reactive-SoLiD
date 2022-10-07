@@ -73,7 +73,7 @@ object Guard:
    /** See
      * [[https://github.com/co-operating-systems/Reactive-SoLiD/blob/work/src/main/scala/run/cosy/http/auth/Auth.md Auth.md]]
      * for details on how to understand an authorization that uses a client supplied proof. Because
-     * we are verifying a proof, we reduce the amount of requrests made dramatically to just
+     * we are verifying a proof, we reduce the amount of requests made dramatically to just
      * following the needed links. Hence the script.
      *
      * @param rules
