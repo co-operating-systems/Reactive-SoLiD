@@ -82,7 +82,7 @@ object Solid:
         val serverBinding = Http()
           .newServerAt(uri.authority.host.address(), uri.authority.port)
           .withSettings(serverSettings)
-          .bind(solid.routeLdp())
+          .bind(solid.securedRoute)
 
         ctx.pipeToSelf(serverBinding) {
           case Success(binding) =>
@@ -188,12 +188,17 @@ class Solid(
    // see https://github.com/typelevel/cats-effect/discussions/1562#discussioncomment-2249643
    // todo: perhaps move to using Future
    import cats.effect.unsafe.implicits.global
-
-   given selectorOps: SelectorOps[cHttp.Request[IO,run.cosy.akka.http.AkkaTp.H4]] = new AkkaMessageSelectors[IO](
+   import run.cosy.akka.http.AkkaTp.HT as H4
+   given selectorOps: SelectorOps[cHttp.Request[IO,H4]] = new AkkaMessageSelectors[IO](
      true,
      baseUri.authority.host,
      baseUri.effectivePort
    ).requestSelectorOps
+   
+   def isLocalUrl(url: Uri): Boolean =
+     url.scheme == baseUri.scheme  
+       && url.authority.host == baseUri.authority.host 
+       && url.authority.port == baseUri.authority.port
 
    def fetchKeyId(keyIdUrl: Uri)(reqc: RequestContext)
        : IO[MessageSignature.SignatureVerifier[IO, KeyIdAgent]] =
@@ -204,7 +209,7 @@ class Solid(
       given ec: ExecutionContext = reqc.executionContext
       val req                    = RdfParser.rdfRequest(keyIdUrl)
       // todo: also check if the resource is absolute but we can determine it is on the current server
-      if keyIdUrl.isRelative then // we get the resource locally
+      if keyIdUrl.isRelative || isLocalUrl(keyIdUrl) then // we get the resource locally
          IO.fromFuture(IO(routeLdp(WebServerAgent)(reqc.withRequest(req)))).flatMap {
            case Complete(response) =>
              IO.fromFuture(IO(RdfParser.unmarshalToRDF(response, keyIdUrl)))
@@ -220,7 +225,8 @@ class Solid(
            case r: Rejected => IO.fromTry(Failure(new Throwable(r.toString))) // todo
          }
       else // we get it from the web
-         ???
+        println("we have to get "+keyIdUrl+"from the web!!")
+        ???
          
    lazy val securedRoute: Route = extractRequestContext { (reqc: RequestContext) =>
      HttpSigDirective.httpSignature(reqc)(fetchKeyId(_)(reqc)).optional.tapply {

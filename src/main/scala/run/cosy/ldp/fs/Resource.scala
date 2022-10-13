@@ -484,7 +484,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
             linkToFileName match
              case dotLinkName.File(version, extension) =>
                VersionsInfo(version, linkTo).NormalBehavior
-             case _ => fileSystemProblemBehavior(new Exception("Storage problem."))
+             case _ => fileSystemProblemBehavior(new Exception("Storage problem with "+linkToFileName))
           }.toOption
         }.get
      catch // TODO: clean this up!

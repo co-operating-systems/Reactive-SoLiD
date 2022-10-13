@@ -167,7 +167,10 @@ object Guard:
 
    def aclLink(acl: Uri): Link = Link(acl, LinkParams.rel("acl"))
 
-   /** we authorize the top command `msg` - it does not really matter what T the end result is. */
+   /** we authorize the top command `msg` - it does not really matter what T the end result is. 
+     * @param msg the message to authorize
+     * @param aclUri the URL of the acl that allows access           
+     * */
    def Authorize[T](msg: CmdMessage[T], aclUri: Uri)(using
        context: ActorContext[ScriptMsg[?] | Do]
    ): Unit =
@@ -197,7 +200,6 @@ object Guard:
                 )
             ) {
               case Success(true) =>
-                context.log.info(s"Successfully authorized ${msg.target} ")
                 Do(msg)
               case Success(false) =>
                 context.log.info(s"failed to authorize ${msg.target} ")
@@ -205,7 +207,7 @@ object Guard:
                   StatusCodes.Unauthorized,
                   Seq(
                     aclLink(aclUri),
-                    `WWW-Authenticate`(HttpChallenge("Signature", s"${msg.target}"))
+                    `WWW-Authenticate`(HttpChallenge("HttpSig", s"${msg.target}"))
                   )
                 ))
               case Failure(e) =>
@@ -214,7 +216,7 @@ object Guard:
                   StatusCodes.Unauthorized,
                   Seq(
                     aclLink(aclUri),
-                    `WWW-Authenticate`(HttpChallenge("Signature", s"${msg.target}"))
+                    `WWW-Authenticate`(HttpChallenge("HttpSig", s"${msg.target}"))
                   ),
                   HttpEntity(ContentTypes.`text/plain(UTF-8)`, e.getMessage)
                 ))

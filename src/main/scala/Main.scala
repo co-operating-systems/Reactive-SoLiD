@@ -19,17 +19,19 @@ def main(args: Array[String]): Unit =
      * [[https://doc.akka.io/docs/akka/current/typed/logging.html#dependency Akka Logging Config doc]]
      * for more details
      */
-   val testConf: Config = ConfigFactory.parseString("""
-                                                      |akka.loglevel = "DEBUG"
-                                                      |akka.log-config-on-start_off = on
-                                                      |akka.log-dead-letters = off
-    """.stripMargin)
+   val testConf: Config = ConfigFactory.parseString(
+     """
+       |akka.loglevel = "DEBUG"
+       |akka.log-config-on-start_off = on
+       |akka.log-dead-letters = off
+    """.stripMargin
+   )
 
    if Files.exists(path) && Files.isDirectory(path) then
       val sys = ActorSystem(Solid(Uri("http://localhost:8080/"), path), "Reactive-Solid", testConf)
       println(s"Server online at http://localhost:8080/\nPress any character + RETURN to stop...")
-      while StdIn.readLine().isEmpty do
-         println("-------------")
+      while StdIn.readLine() != "q" do
+         println("""------- type "q⏎" to quit, anything else to leave a comment  -------- """)
       sys.terminate()
    else
       println(s"Could not find directory <$path>")

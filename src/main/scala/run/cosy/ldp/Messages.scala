@@ -36,11 +36,11 @@ object Messages:
    private def send[A](msg: CmdMessage[A], uriPath: Uri.Path)(using
        reg: ResourceRegistry
    ): Option[Unit] =
-     reg.getActorRef(uriPath).map { (remaining, sendTo) =>
+     reg.getActorRef(uriPath).map { (remaining, sendTo: ActorRef[Messages.Route]) =>
        sendTo ! {
          remaining match
           case Nil          => WannaDo(msg)
-          case head :: tail => RouteMsg(NonEmptyList.fromSeq(head, tail.toSeq), msg)
+          case head :: tail => RouteMsg(NonEmptyList.fromSeq(head, tail), msg)
        }
      }
 

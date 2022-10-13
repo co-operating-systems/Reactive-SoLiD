@@ -19,25 +19,28 @@ import scala.util.{Failure, Try}
 import akka.http.scaladsl.model.Uri
 import cats.effect.IO
 import run.cosy.http.auth.KeyIdAgent
+import com.nimbusds.jose
 
 /** Map JWK Names to Java Cryptography Architecture names
   */
 object JW2JCA:
    val signerFactory = new DefaultJWSSignerFactory()
    import run.cosy.http.auth.SignatureVerifier
-
+   
+   def algtoJWSAlg(alg: jose.Algorithm): Option[jose.JWSAlgorithm] =
+     alg.getName match
+       case "PS512" => Some(jose.JWSAlgorithm.PS512)
+       case "PS256"   => Some(jose.JWSAlgorithm.PS256)
+       case _ => None
+   
+   
    def jw2rca(jwk: JWK, keyId: Uri): Try[MessageSignature.SignatureVerifier[IO, KeyIdAgent]] =
-     jwk.getAlgorithm match
-      case jwsAlgo: JWSAlgorithm =>
-        Try(RSASSA.getSignerAndVerifier(jwsAlgo, signerFactory.getJCAContext.getProvider))
-          .flatMap { sig =>
-            jwk match
-             case k: AsymmetricJWK => Try(
-                 SignatureVerifier(keyId, k.toPublicKey, sig)
-               )
-             case _ => Failure(CryptoException("we only use asymmetric keys!"))
-          }
-      case alg => Failure(CryptoException("We do not support algorithm " + alg))
+     (jwk, algtoJWSAlg(jwk.getAlgorithm)) match
+      case (rsaJWK : com.nimbusds.jose.jwk.RSAKey, Some(alg)) =>
+        Try(RSASSA.getSignerAndVerifier(alg, signerFactory.getJCAContext.getProvider))
+          .flatMap { sig => Try(SignatureVerifier(keyId, rsaJWK.toPublicKey, sig)) }
+      case alg =>
+        Failure(CryptoException("We do not support algorithm " + alg))
 
    /** Get the java.security.signature for a given JCA Algorithm todo: build a typesafe library of
      * such algorithms

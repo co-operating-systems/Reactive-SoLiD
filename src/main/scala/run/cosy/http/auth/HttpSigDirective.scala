@@ -21,7 +21,7 @@ import cats.effect.{IO, kernel}
 import cats.effect.unsafe.IORuntime
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.Base64
-import run.cosy.akka.http.AkkaTp.H4
+import run.cosy.akka.http.AkkaTp.HT as H4
 import run.cosy.akka.http.headers.HSCredentials
 import run.cosy.http.auth.MessageSignature.SignatureVerifier
 import run.cosy.http.auth.KeyIdAgent
@@ -67,7 +67,8 @@ object HttpSigDirective:
            keyIdtoUri.andThen(_.flatMap(fetch))
          )(httpsig)
          agentIO.map(a => AuthenticationResult.success(a)).unsafeToFuture()
-       case _ => FastFuture.successful(
+       case x =>
+         FastFuture.successful(
            AuthenticationResult.failWithChallenge(
              HttpChallenge("HttpSig", None, Map[String, String]())
            )
