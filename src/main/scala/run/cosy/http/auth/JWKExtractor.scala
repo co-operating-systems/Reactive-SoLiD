@@ -39,11 +39,13 @@ object JWKExtractor:
        if pg.pointer.isURI then
           (pg / security.publicKeyJwk).nodes.collectFirst {
             case JWkey(jwk) => jwk
-          }.map(jk => KeyIdInfo(Uri(pg.pointer.toString), jk))
+          }.map { jk => KeyIdInfo(Uri(pg.pointer.asInstanceOf[Rdf#URI].getString), jk) }
        else None
 
    def toJavaCrypt(jwk: JWK) =
      jwk.getAlgorithm
+
+end JWKExtractor
 
 // the binder system does not work here as it does not allow one to set the location of the id field
 //	given PGBinder[Rdf, KeyIdInfo] =

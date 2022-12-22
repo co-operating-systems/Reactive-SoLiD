@@ -10,6 +10,7 @@ import akka.http.scaladsl.model.{HttpMethods, Uri}
 import run.cosy.RDF
 import run.cosy.RDF.*
 import run.cosy.RDF.ops.*
+import run.cosy.http.auth.Guard.filterRulesFor
 import run.cosy.ldp.rdf.LocatedGraphs.LGs
 import run.cosy.ldp.{ImportsDLTestServer, TestCompiler, TestServer, WebServers}
 import scalaz.Cofree
@@ -44,14 +45,14 @@ class TestGuard extends munit.FunSuite:
    test("test access to resources using root container ACL") {
 
      val aclGraph: LGs = ws.locatedGraphs(rootAcl).get
-
+     val getRules      = Guard.filterRulesFor(aclGraph, rootUri, GET)
      assertEquals(
-       Guard.filterRulesFor(aclGraph, rootUri, GET).points.toSet,
+       getRules.points.toSet,
        Set(podRdfAcl.withFragment("Public"), podRdfAcl.withFragment("Admin"))
      )
 
      assert(
-       Guard.authorize(aclGraph, new Anonymous(), rootUri, GET),
+       Guard.authorize(getRules, new Anonymous),
        "The root acl allows all contents to be READable"
      )
 
@@ -64,7 +65,7 @@ class TestGuard extends munit.FunSuite:
 
      assertEquals(unionAll(fetchedDataSet), LGs(Set(rootAcl.toRdf), aclGraph.graph))
 
-     val auth: Boolean = Guard.authorize(unionAll(fetchedDataSet), new Anonymous(), rootUri, GET)
+     val auth: Boolean = Guard.authorize(getRules, new Anonymous())
      assert(auth, "Anyone can access the root container")
 
      val aclWithImports: LGs =
@@ -87,8 +88,9 @@ class TestGuard extends munit.FunSuite:
      ).foldMap(aclBasic.eval)
      assert(answer2, "The root acl allows all contents to be READable")
 
+     val postRules = Guard.filterRulesFor(aclGraph, rootUri, POST)
      assert(
-       !Guard.authorize(aclGraph, Anonymous(), rootUri, POST),
+       !Guard.authorize(postRules, Anonymous()),
        "Anonymous should not have POST access"
      )
      val answer2Post =
@@ -127,9 +129,46 @@ class TestGuard extends munit.FunSuite:
        "The root rule applies by default to Tim Berners-Lee's card, disallowing PUT by anonymous"
      )
    }
-
+   
+   val readmeACL = (ws.base / "README.acl")
+   val readme = (ws.base / "README")
    val indexACL = (ws.base / "index.acl")
    val index    = (ws.base / "index")
+ 
+   test("acl with no owl:imports giving read access to itself") {
+     val rmACLGet = Guard.authorizeScript(readmeACL, Anonymous(), readmeACL, GET).foldMap(aclBasic.eval)
+     assert(rmACLGet, "/README.acl is readable by all")
+     
+     val rmACLPUT = Guard.authorizeScript(readmeACL, Anonymous(), readmeACL, PUT).foldMap(aclBasic.eval)
+     assert(!rmACLPUT, "/README.acl is not writeable by all")
+     
+     val rmGET = Guard.authorizeScript(readmeACL, Anonymous(), readme, GET).foldMap(aclBasic.eval)
+     assert(rmGET, "/README is readable by all")
+     
+     val rmPUT = Guard.authorizeScript(readmeACL, Anonymous(), readme, PUT).foldMap(aclBasic.eval)
+     assert(!rmPUT, "/README is not Writeable by all")
+     
+     val wrongGET = Guard.authorizeScript(readmeACL, Anonymous(), index, GET).foldMap(aclBasic.eval)
+     assert(!wrongGET, "README.acl does not give any rights to /index")
+   }
+   
+   val hiddenAcl = (ws.base / "aclsHidden"/ "README.acl")
+   val readmeNotHidden = (ws.base / "aclsHidden"/ "README")
+   
+   test("hidden acl with no owl:imports") {
+     val readmeACLGet = Guard.authorizeScript(hiddenAcl, Anonymous(), hiddenAcl, GET).foldMap(aclBasic.eval)
+     assert(!readmeACLGet, s"$hiddenAcl is not readable by all")
+     
+     val readmeACLPut = Guard.authorizeScript(hiddenAcl, Anonymous(), hiddenAcl, PUT).foldMap(aclBasic.eval)
+     assert(!readmeACLPut, s"$hiddenAcl is not writeable by all")
+     
+     val readmeGet = Guard.authorizeScript(hiddenAcl, Anonymous(), readmeNotHidden, GET).foldMap(aclBasic.eval)
+     assert(readmeGet, s"$hiddenAcl makes $readmeNotHidden readable by all")
+
+     val readmePut = Guard.authorizeScript(hiddenAcl, Anonymous(), readmeNotHidden, PUT).foldMap(aclBasic.eval)
+     assert(!readmePut, s"$hiddenAcl does not make $readmeNotHidden writeable by all")
+   
+   }
 
    test("test access to /index ") {
      val aGet = Guard.authorizeScript(indexACL, Anonymous(), index, GET).foldMap(aclBasic.eval)

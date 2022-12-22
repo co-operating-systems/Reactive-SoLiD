@@ -41,7 +41,7 @@ import _root_.scalaz.NonEmptyList
 import _root_.scalaz.NonEmptyList.nel
 import cats.effect.IO
 import run.cosy.http.headers.SelectorOps
-
+import run.cosy.http.Http as cHttp
 import _root_.java.io.{File, FileInputStream}
 import _root_.java.nio.file.{Files, Path}
 import _root_.javax.naming.AuthenticationException
@@ -53,9 +53,9 @@ import _root_.scala.util.{Failure, Success}
 object Solid:
    // todo: make @tailrec
    def pathToList(path: Uri.Path): List[String] = path match
-      case Empty               => Nil
-      case Segment(head, tail) => head :: pathToList(tail)
-      case Slash(tail) => pathToList(tail) // note: ignore slashes. But could they be useful?
+    case Empty               => Nil
+    case Segment(head, tail) => head :: pathToList(tail)
+    case Slash(tail)         => pathToList(tail) // note: ignore slashes. But could they be useful?
 
    def apply(uri: Uri, fpath: Path): Behavior[Run] =
      Behaviors.setup { (ctx: ActorContext[Run]) =>
@@ -71,16 +71,18 @@ object Solid:
         val ps  = ParserSettings.forServer(system).withCustomMediaTypes(RDFMediaTypes.all*)
         val ss1 = ServerSettings(system)
         val serverSettings = ss1.withParserSettings(ps)
-          .withServerHeader(Some(headers.Server(
-            headers.ProductVersion("reactive-solid", "0.3"),
-            ss1.serverHeader.toSeq.flatMap(_.products)*
-          )))
+          .withServerHeader(
+            Some(headers.Server(
+              headers.ProductVersion("reactive-solid", "0.3"),
+              ss1.serverHeader.toSeq.flatMap(_.products)*
+            ))
+          )
           .withDefaultHostHeader(headers.Host(uri.authority.host, uri.authority.port))
 
         val serverBinding = Http()
           .newServerAt(uri.authority.host.address(), uri.authority.port)
           .withSettings(serverSettings)
-          .bind(solid.routeLdp())
+          .bind(solid.securedRoute)
 
         ctx.pipeToSelf(serverBinding) {
           case Success(binding) =>
@@ -186,12 +188,17 @@ class Solid(
    // see https://github.com/typelevel/cats-effect/discussions/1562#discussioncomment-2249643
    // todo: perhaps move to using Future
    import cats.effect.unsafe.implicits.global
-
-   given selectorOps: SelectorOps[HttpRequest] = new AkkaMessageSelectors(
+   import run.cosy.akka.http.AkkaTp.HT as H4
+   given selectorOps: SelectorOps[cHttp.Request[IO,H4]] = new AkkaMessageSelectors[IO](
      true,
      baseUri.authority.host,
      baseUri.effectivePort
    ).requestSelectorOps
+   
+   def isLocalUrl(url: Uri): Boolean =
+     url.scheme == baseUri.scheme  
+       && url.authority.host == baseUri.authority.host 
+       && url.authority.port == baseUri.authority.port
 
    def fetchKeyId(keyIdUrl: Uri)(reqc: RequestContext)
        : IO[MessageSignature.SignatureVerifier[IO, KeyIdAgent]] =
@@ -202,24 +209,25 @@ class Solid(
       given ec: ExecutionContext = reqc.executionContext
       val req                    = RdfParser.rdfRequest(keyIdUrl)
       // todo: also check if the resource is absolute but we can determine it is on the current server
-      if keyIdUrl.isRelative then // we get the resource locally
+      if keyIdUrl.isRelative || isLocalUrl(keyIdUrl) then // we get the resource locally
          IO.fromFuture(IO(routeLdp(WebServerAgent)(reqc.withRequest(req)))).flatMap {
            case Complete(response) =>
              IO.fromFuture(IO(RdfParser.unmarshalToRDF(response, keyIdUrl)))
                .flatMap { (g: IResponse[Rdf#Graph]) =>
                   import http.auth.JWKExtractor.*, http.auth.JW2JCA.jw2rca
                   PointedGraph(keyIdUrl.toRdfNode, g.content).asKeyIdInfo match
-                     case Some(kidInfo) => IO.fromTry(jw2rca(kidInfo.pka, keyIdUrl))
-                     case None => IO.fromTry(Failure(http.AuthException(
-                         null, // todo
-                         s"Could not find or parse security:publicKeyJwk relation in <$keyIdUrl>"
-                       )))
+                   case Some(kidInfo) => IO.fromTry(jw2rca(kidInfo.pka, keyIdUrl))
+                   case None => IO.fromTry(Failure(http.AuthException(
+                       null, // todo
+                       s"Could not find or parse security:publicKeyJwk relation in <$keyIdUrl>"
+                     )))
                }
            case r: Rejected => IO.fromTry(Failure(new Throwable(r.toString))) // todo
          }
       else // we get it from the web
-         ???
-
+        println("we have to get "+keyIdUrl+"from the web!!")
+        ???
+         
    lazy val securedRoute: Route = extractRequestContext { (reqc: RequestContext) =>
      HttpSigDirective.httpSignature(reqc)(fetchKeyId(_)(reqc)).optional.tapply {
        case Tuple1(Some(agent)) => routeLdp(agent)

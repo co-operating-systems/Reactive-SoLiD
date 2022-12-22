@@ -15,15 +15,15 @@ object UriX:
       /** return filename if exists - can return None, for urls without paths or paths ending in `/`
         */
       def fileName: Option[String] = uri.path.reverse match
-         case Path.Segment(head, tail) => Some(head)
-         case _                        => None
+       case Path.Segment(head, tail) => Some(head)
+       case _                        => None
 
-      /** remove uri without the final slash, or the same */
+       /** remove uri without the final slash, or the same */
       def withoutSlash: Uri =
          val rev: Uri.Path = uri.path.reverse
          rev match
-            case Uri.Path.Slash(path) => uri.withPath(path.reverse)
-            case _                    => uri
+          case Uri.Path.Slash(path) => uri.withPath(path.reverse)
+          case _                    => uri
 
       /** replace fileName with Name in Uri or else place filename after slash or add an initial
         * slash Todo: improve - this definintion feels very ad-hoc ...
@@ -31,9 +31,9 @@ object UriX:
       def sibling(name: String) =
          val rev: Uri.Path = uri.path.reverse
          val newPath = rev match
-            case Path.Slash(path)         => uri.path ++ Path(name)
-            case Path.Empty               => Path.Slash(Path(name))
-            case Path.Segment(head, tail) => Path.Segment(name, tail).reverse
+          case Path.Slash(path)         => uri.path ++ Path(name)
+          case Path.Empty               => Path.Slash(Path(name))
+          case Path.Segment(head, tail) => Path.Segment(name, tail).reverse
          uri.withPath(newPath)
 
       /** @param other

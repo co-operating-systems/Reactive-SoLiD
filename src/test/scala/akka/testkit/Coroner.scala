@@ -201,10 +201,10 @@ object Coroner:
             if i == 0 && ti.getLockInfo != null then
                import java.lang.Thread.State.*
                ti.getThreadState match
-                  case BLOCKED       => appendMsg("\t-  blocked on ", ti.getLockInfo)
-                  case WAITING       => appendMsg("\t-  waiting on ", ti.getLockInfo)
-                  case TIMED_WAITING => appendMsg("\t-  waiting on ", ti.getLockInfo)
-                  case _             =>
+                case BLOCKED       => appendMsg("\t-  blocked on ", ti.getLockInfo)
+                case WAITING       => appendMsg("\t-  waiting on ", ti.getLockInfo)
+                case TIMED_WAITING => appendMsg("\t-  waiting on ", ti.getLockInfo)
+                case _             =>
 
             for mi <- ti.getLockedMonitors if mi.getLockedStackDepth == i do
                appendMsg("\t-  locked ", mi)

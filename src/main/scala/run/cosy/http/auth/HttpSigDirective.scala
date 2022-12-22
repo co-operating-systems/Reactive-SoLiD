@@ -8,33 +8,11 @@ package run.cosy.http.auth
 
 import akka.http.scaladsl.model
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, HttpMessage, HttpRequest, Uri}
-import akka.http.scaladsl.model.headers.{
-  Authorization,
-  GenericHttpCredentials,
-  HttpChallenge,
-  HttpCredentials,
-  OAuth2BearerToken,
-  `Content-Type`
-}
-import akka.http.scaladsl.server.AuthenticationFailedRejection.{
-  CredentialsMissing,
-  CredentialsRejected
-}
+import akka.http.scaladsl.model.headers.{Authorization, GenericHttpCredentials, HttpChallenge, HttpCredentials, OAuth2BearerToken, `Content-Type`}
+import akka.http.scaladsl.server.AuthenticationFailedRejection.{CredentialsMissing, CredentialsRejected}
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, RequestContext}
-import akka.http.scaladsl.server.Directives.{
-  AsyncAuthenticator,
-  AuthenticationResult,
-  authenticateOrRejectWithChallenge,
-  extract,
-  extractCredentials,
-  extractRequestContext,
-  provide
-}
-import akka.http.scaladsl.server.directives.{
-  AuthenticationDirective,
-  AuthenticationResult,
-  Credentials
-}
+import akka.http.scaladsl.server.Directives.{AsyncAuthenticator, AuthenticationResult, authenticateOrRejectWithChallenge, extract, extractCredentials, extractRequestContext, provide}
+import akka.http.scaladsl.server.directives.{AuthenticationDirective, AuthenticationResult, Credentials}
 import akka.http.scaladsl.server.directives.BasicDirectives.extractExecutionContext
 import akka.http.scaladsl.server.directives.RouteDirectives.reject
 import akka.http.scaladsl.util.FastFuture
@@ -43,16 +21,13 @@ import cats.effect.{IO, kernel}
 import cats.effect.unsafe.IORuntime
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.Base64
+import run.cosy.akka.http.AkkaTp.HT as H4
 import run.cosy.akka.http.headers.HSCredentials
 import run.cosy.http.auth.MessageSignature.SignatureVerifier
 import run.cosy.http.auth.KeyIdAgent
 import run.cosy.akka.http.headers.HSCredentials
-import run.cosy.http.headers.{HttpSig, Rfc8941}
-import run.cosy.http.{
-  InvalidCreatedFieldException,
-  InvalidExpiresFieldException,
-  InvalidSigException
-}
+import run.cosy.http.headers.{HttpSig, Rfc8941, SelectorOps}
+import run.cosy.http.{Http, InvalidCreatedFieldException, InvalidExpiresFieldException, InvalidSigException}
 
 import java.net.URI
 import java.security.{PrivateKey, PublicKey, Signature as JSignature}
@@ -70,7 +45,8 @@ object HttpSigDirective:
    import run.cosy.http.headers.SelectorOps
    import run.cosy.http.auth.KeyIdAgent
    import run.cosy.http.auth.AkkaHttpMessageSignature.*
-
+   import scala.language.implicitConversions
+   
    /** lifts a request context into an authentication directive.
      * @param reqc
      * @param fetch
@@ -80,18 +56,19 @@ object HttpSigDirective:
    def httpSignature(reqc: RequestContext)(
        fetch: model.Uri => IO[SignatureVerifier[IO, KeyIdAgent]]
    )(using
-       SelectorOps[HttpRequest],
+       SelectorOps[Http.Request[IO,H4]],
        MonadError[IO, Throwable],
        cats.effect.unsafe.IORuntime,
        kernel.Clock[IO]
    ): AuthenticationDirective[KeyIdAgent] =
      authenticateOrRejectWithChallenge {
        case Some(HSCredentials(httpsig)) =>
-         val agentIO: IO[KeyIdAgent] = reqc.request.signatureAuthN[IO, KeyIdAgent](
+         val agentIO: IO[KeyIdAgent] = reqc.request.signatureAuthN[KeyIdAgent](
            keyIdtoUri.andThen(_.flatMap(fetch))
          )(httpsig)
          agentIO.map(a => AuthenticationResult.success(a)).unsafeToFuture()
-       case _ => FastFuture.successful(
+       case x =>
+         FastFuture.successful(
            AuthenticationResult.failWithChallenge(
              HttpChallenge("HttpSig", None, Map[String, String]())
            )

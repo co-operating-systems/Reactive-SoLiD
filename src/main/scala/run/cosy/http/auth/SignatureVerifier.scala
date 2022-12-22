@@ -40,13 +40,13 @@ object SignatureVerifier:
        sig: JSignature
    ): MessageSignature.SignatureVerifier[IO, Unit] =
      (signingStr, signature) =>
-       IO {
+       IO.fromTry[Unit](Try {
          sig.initVerify(pubKey)
          sig.update(signingStr.toArray)
          val answer = sig.verify(signature.toArray)
          if answer then ()
          else throw InvalidSigException(s"cannot verify signature")
-       }
+       })
 
    /** given a keyId Uri, a public key and a signature algorithm return a verifier that will return
      * an WebKeyIdAgent for verified signatures. The pubkey and algorithm must come from a request
@@ -59,13 +59,14 @@ object SignatureVerifier:
      * We call this apply, because for the HttpSig framework all the time
      */
    def apply(
-       keydId: Uri,
+       keyId: Uri,
        pubKey: PublicKey,
        sigAlgorithm: JSignature
    ): MessageSignature.SignatureVerifier[IO, KeyIdAgent] =
      (signingStr, signature) =>
+       println("========= in verify sig for "+keyId)
        jsigVerifier(pubKey, sigAlgorithm)(signingStr, signature)
-         .map(_ => KeyIdAgent(keydId, pubKey))
+         .map(_ => KeyIdAgent(keyId, pubKey))
 
 end SignatureVerifier
 
