@@ -9,39 +9,26 @@ package run.cosy
 import _root_.akka.Done
 import _root_.akka.actor.CoordinatedShutdown
 import _root_.akka.actor.typed.scaladsl.{ActorContext, Behaviors, LoggerOps}
-import _root_.akka.actor.typed.{ActorRef, ActorSystem, Behavior, PostStop, Scheduler}
-import _root_.akka.http.scaladsl.settings.ParserSettings
-import _root_.akka.http.scaladsl.Http
+import _root_.akka.actor.typed.*
 import _root_.akka.http.scaladsl.Http.ServerBinding
+import _root_.akka.http.scaladsl.{Http, model}
 import _root_.akka.http.scaladsl.model.Uri.Path.{Empty, Segment, Slash}
-import _root_.akka.http.scaladsl.model
-import _root_.akka.http.scaladsl.model.headers
-import _root_.akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse, Uri}
-import _root_.akka.http.scaladsl.server.Directives
+import _root_.akka.http.scaladsl.model.*
 import _root_.akka.http.scaladsl.server.Directives.{complete, extract, extractRequestContext}
-import _root_.akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
-import _root_.akka.http.scaladsl.settings.ServerSettings
+import _root_.akka.http.scaladsl.server.{Directives, RequestContext, Route, RouteResult}
+import _root_.akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import _root_.akka.http.scaladsl.util.FastFuture
 import _root_.akka.util.Timeout
 import _root_.com.typesafe.config.{Config, ConfigFactory}
 import _root_.org.w3.banana.PointedGraph
-import _root_.run.cosy.http.{IResponse, RDFMediaTypes, RdfParser}
+import _root_.run.cosy.http.auth.*
 import _root_.run.cosy.http.util.UriX.*
-import _root_.run.cosy.http.auth.{
-  Agent,
-  Anonymous,
-  KeyIdAgent,
-  MessageSignature,
-  SignatureVerifier,
-  WebServerAgent
-}
-import _root_.run.cosy.ldp.ResourceRegistry
-import _root_.run.cosy.ldp.Messages as LDP
+import _root_.run.cosy.http.{IResponse, RDFMediaTypes, RdfParser, messages, Http as cHttp}
+import _root_.run.cosy.ldp.{ResourceRegistry, Messages as LDP}
 import _root_.scalaz.NonEmptyList
 import _root_.scalaz.NonEmptyList.nel
 import cats.effect.IO
-import run.cosy.http.headers.SelectorOps
-import run.cosy.http.Http as cHttp
+
 import _root_.java.io.{File, FileInputStream}
 import _root_.java.nio.file.{Files, Path}
 import _root_.javax.naming.AuthenticationException
@@ -171,10 +158,9 @@ class Solid(
 )(using sys: ActorSystem[?]):
 
    import _root_.akka.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
-   import _root_.run.cosy.http.auth.HttpSigDirective
-   import _root_.run.cosy.akka.http.headers.AkkaMessageSelectors
    import _root_.akka.pattern.ask
    import _root_.run.cosy.akka.http.headers.given
+   import _root_.run.cosy.http.auth.{HttpSigDirective, SigVerifier}
 
    import _root_.scala.concurrent.duration.*
    import _root_.scala.jdk.CollectionConverters.*
@@ -189,22 +175,22 @@ class Solid(
    // todo: perhaps move to using Future
    import cats.effect.unsafe.implicits.global
    import run.cosy.akka.http.AkkaTp.HT as H4
-   given selectorOps: SelectorOps[cHttp.Request[IO,H4]] = new AkkaMessageSelectors[IO](
-     true,
-     baseUri.authority.host,
-     baseUri.effectivePort
-   ).requestSelectorOps
-   
+//   given selectorOps: SelectorOps[cHttp.Request[H4]] = new AkkaMessageSelectors[IO](
+//     true,
+//     baseUri.authority.host,
+//     baseUri.effectivePort
+//   ).requestSelectorOps
+//
    def isLocalUrl(url: Uri): Boolean =
-     url.scheme == baseUri.scheme  
-       && url.authority.host == baseUri.authority.host 
+     url.scheme == baseUri.scheme
+       && url.authority.host == baseUri.authority.host
        && url.authority.port == baseUri.authority.port
 
    def fetchKeyId(keyIdUrl: Uri)(reqc: RequestContext)
        : IO[MessageSignature.SignatureVerifier[IO, KeyIdAgent]] =
       import RouteResult.{Complete, Rejected}
-      import run.cosy.RDF.{given, *}
-      import run.cosy.RDF.ops.{given, *}
+      import run.cosy.RDF.ops.{*, given}
+      import run.cosy.RDF.{*, given}
 
       given ec: ExecutionContext = reqc.executionContext
       val req                    = RdfParser.rdfRequest(keyIdUrl)
@@ -214,8 +200,10 @@ class Solid(
            case Complete(response) =>
              IO.fromFuture(IO(RdfParser.unmarshalToRDF(response, keyIdUrl)))
                .flatMap { (g: IResponse[Rdf#Graph]) =>
-                  import http.auth.JWKExtractor.*, http.auth.JW2JCA.jw2rca
+                  import http.auth.JW2JCA.jw2rca
+                  import http.auth.JWKExtractor.*
                   PointedGraph(keyIdUrl.toRdfNode, g.content).asKeyIdInfo match
+                   // todo: can we move to bobcats entirely yet?
                    case Some(kidInfo) => IO.fromTry(jw2rca(kidInfo.pka, keyIdUrl))
                    case None => IO.fromTry(Failure(http.AuthException(
                        null, // todo
@@ -225,11 +213,17 @@ class Solid(
            case r: Rejected => IO.fromTry(Failure(new Throwable(r.toString))) // todo
          }
       else // we get it from the web
-        println("we have to get "+keyIdUrl+"from the web!!")
-        ???
-         
+         println("we have to get " + keyIdUrl + "from the web!!")
+         ???
+
+   lazy val HttpSigDir = HttpSigDirective(
+     messages.ServerContext(baseUri.authority.host.address(), baseUri.scheme == "https",
+       baseUri.effectivePort),
+     fetchKeyId
+   )
+
    lazy val securedRoute: Route = extractRequestContext { (reqc: RequestContext) =>
-     HttpSigDirective.httpSignature(reqc)(fetchKeyId(_)(reqc)).optional.tapply {
+     HttpSigDir.httpSignature(reqc).optional.tapply {
        case Tuple1(Some(agent)) => routeLdp(agent)
        case Tuple1(None)        => routeLdp()
      }
@@ -241,11 +235,11 @@ class Solid(
       val path = reqc.request.uri.path
       import reqc.given
       reqc.log.info("routing req " + reqc.request.uri)
-      val (remaining, actor): (List[String], ActorRef[LDP.Cmd]) = registry.getActorRef(path)
+      val (remaining: Seq[String], actor: ActorRef[LDP.Route]) = registry.getActorRef(path)
         .getOrElse((List[String](), rootRef))
       reqc.log.info(s"($remaining, $actor) = registry.getActorRef($path)")
 
-      def routeWith(replyTo: ActorRef[HttpResponse]): LDP.Cmd = LDP.RouteMsg(
+      def routeWith(replyTo: ActorRef[HttpResponse]): LDP.Route = LDP.RouteMsg(
         NonEmptyList.fromSeq("/", remaining.toSeq),
         LDP.CmdMessage(SolidCmd.plain(reqc.request), agent, replyTo)
       ).nextRoute

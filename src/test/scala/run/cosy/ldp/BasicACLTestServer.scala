@@ -17,8 +17,7 @@ import run.cosy.RDF.ops.*
   * one illustrated
   * [[https://github.com/solid/authorization-panel/issues/210#issuecomment-838747077 in the diagram of issue210]]
   * and implemented in ImportsTestServer except that we only use `wac:default` and `:imports` but no
-  * more complex OWL rules.
-  * todo: draw out the diagram
+  * more complex OWL rules. todo: draw out the diagram
   */
 case class BasicACLTestServer(base: Uri) extends TestServer:
    import cats.implicits.*
@@ -77,14 +76,14 @@ case class BasicACLTestServer(base: Uri) extends TestServer:
          -- wac.agentClass ->- foaf.Agent
      )
    }
-   
-   val aclGraphReadByAll: Rdf#Graph =  podGr(
+
+   val aclGraphReadByAll: Rdf#Graph = podGr(
      URI("#aclReadByAll").a(wac.Authorization)
-        -- wac.accessTo ->- URI("")
-        -- wac.mode ->- wac.Read
-        -- wac.agentClass ->- foaf.Agent
+       -- wac.accessTo ->- URI("")
+       -- wac.mode ->- wac.Read
+       -- wac.agentClass ->- foaf.Agent
    )
-   
+
    val noImportsReadOnly: LocGraph = path("/README.acl") -> {
      podGr(
        URI("#Public").a(wac.Authorization)
@@ -93,7 +92,7 @@ case class BasicACLTestServer(base: Uri) extends TestServer:
          -- wac.agentClass ->- foaf.Agent
      ) union aclGraphReadByAll
    }
-   
+
    val hiddenAclGivingReadAccess: LocGraph = path("/aclsHidden/README.acl") -> {
      podGr(
        URI("#Public").a(wac.Authorization)

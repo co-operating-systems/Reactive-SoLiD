@@ -23,7 +23,7 @@ class TestCustomHeaders extends munit.FunSuite:
      val blg = new Slug("blog".asClean)
      assertEquals(blg.value, "blog", blg)
 
-     val RawHeader(k2, v2) = new Slug("blog 2".asClean)
+     val RawHeader(k2, v2) = new Slug("blog 2".asClean) : @unchecked
      assertEquals(k2, "Slug")
      assertEquals(v2, "blog+2")
 
@@ -49,7 +49,7 @@ class TestCustomHeaders extends munit.FunSuite:
 
      intercept[MatchError] {
        // won't match, different header name
-       val Slug(_) = Link(Uri("page2"), LinkParams.next)
+       val Slug(_) = Link(Uri("page2"), LinkParams.next):  @unchecked
      }
    }
 

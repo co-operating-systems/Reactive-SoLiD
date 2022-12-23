@@ -64,9 +64,9 @@ object SignatureVerifier:
        sigAlgorithm: JSignature
    ): MessageSignature.SignatureVerifier[IO, KeyIdAgent] =
      (signingStr, signature) =>
-       println("========= in verify sig for "+keyId)
-       jsigVerifier(pubKey, sigAlgorithm)(signingStr, signature)
-         .map(_ => KeyIdAgent(keyId, pubKey))
+        println("========= in verify sig for " + keyId)
+        jsigVerifier(pubKey, sigAlgorithm)(signingStr, signature)
+          .map(_ => KeyIdAgent(keyId, pubKey))
 
 end SignatureVerifier
 

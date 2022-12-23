@@ -86,7 +86,7 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
           probe.ref
         ))
 
-        val HttpResponse(status, hdrs, response, protocol) = probe.receiveMessage()
+        val HttpResponse(status, hdrs, response, protocol) = probe.receiveMessage(): @unchecked
         assert(status == Created)
         assert(hdrs.contains(Location(rootUri.withPath(Uri.Path.Empty / ("Hello")))))
         assert(response.contentType.mediaType == MediaTypes.`text/plain`)
@@ -107,7 +107,7 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
             probe.ref
           )
         )
-        val HttpResponse(status, hdrs, response, protocol) = probe.receiveMessage()
+        val HttpResponse(status, hdrs, response, protocol) = probe.receiveMessage(): @unchecked
         assert(status == OK)
         //	assert(hdrs.contains(Location(rootUri.withPath(Uri.Path.Empty / ("Hello.txt")))))
         assert(response.contentType.mediaType == MediaTypes.`text/plain`)

@@ -167,10 +167,12 @@ object Guard:
 
    def aclLink(acl: Uri): Link = Link(acl, LinkParams.rel("acl"))
 
-   /** we authorize the top command `msg` - it does not really matter what T the end result is. 
-     * @param msg the message to authorize
-     * @param aclUri the URL of the acl that allows access           
-     * */
+   /** we authorize the top command `msg` - it does not really matter what T the end result is.
+     * @param msg
+     *   the message to authorize
+     * @param aclUri
+     *   the URL of the acl that allows access
+     */
    def Authorize[T](msg: CmdMessage[T], aclUri: Uri)(using
        context: ActorContext[ScriptMsg[?] | Do]
    ): Unit =

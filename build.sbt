@@ -1,13 +1,15 @@
-import Dependencies.*
+import Dependencies._
 
-val Scala3Version = "3.1.1"
+val Scala3Version = "3.2.1"
 
 name               := "Reactive Solid"
 organizationName   := "Henry Story"
 headerLicenseStyle := HeaderLicenseStyle.SpdxSyntax
 
-ThisBuild / tlBaseVersion          := "0.2"
+ThisBuild / tlBaseVersion          := "0.3"
 ThisBuild / tlUntaggedAreSnapshots := true
+ThisBuild / organization           := "net.bblfish.solid"
+ThisBuild / organizationName       := "Henry Story"
 
 ThisBuild / developers := List(
   tlGitHubDev("bblfish", "Henry Story")

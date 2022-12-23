@@ -484,7 +484,8 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
             linkToFileName match
              case dotLinkName.File(version, extension) =>
                VersionsInfo(version, linkTo).NormalBehavior
-             case _ => fileSystemProblemBehavior(new Exception("Storage problem with "+linkToFileName))
+             case _ =>
+               fileSystemProblemBehavior(new Exception("Storage problem with " + linkToFileName))
           }.toOption
         }.get
      catch // TODO: clean this up!
@@ -825,7 +826,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
         */
       def Put(cmd: CmdMessage[?]): Unit =
          // todo: fix the type of the arguments so that this cannot fail
-         val CmdMessage(run.cosy.ldp.SolidCmd.Plain(req, _), _, _) = cmd
+         val CmdMessage(run.cosy.ldp.SolidCmd.Plain(req, _), _, _) = cmd: @unchecked
          // 1. we filter out all unaceptable requests, and return error responses to those
          if PUTstarted then
             cmd.respondWith(HttpResponse(
@@ -986,7 +987,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
       //  also: we would not create a special archive directory for this single resource
       def Delete(cmd: CmdMessage[?]): Behavior[Resource.AcceptMsg] =
          // todo: fix the type of the arguments so that this cannot fail
-         val CmdMessage(run.cosy.ldp.SolidCmd.Plain(req, _), _, _) = cmd
+         val CmdMessage(run.cosy.ldp.SolidCmd.Plain(req, _), _, _) = cmd: @unchecked
          import java.nio.file.StandardCopyOption
 
          import java.nio.file.LinkOption.NOFOLLOW_LINKS

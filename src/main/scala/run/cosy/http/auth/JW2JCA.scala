@@ -26,17 +26,16 @@ import com.nimbusds.jose
 object JW2JCA:
    val signerFactory = new DefaultJWSSignerFactory()
    import run.cosy.http.auth.SignatureVerifier
-   
+
    def algtoJWSAlg(alg: jose.Algorithm): Option[jose.JWSAlgorithm] =
      alg.getName match
-       case "PS512" => Some(jose.JWSAlgorithm.PS512)
-       case "PS256"   => Some(jose.JWSAlgorithm.PS256)
-       case _ => None
-   
-   
+      case "PS512" => Some(jose.JWSAlgorithm.PS512)
+      case "PS256" => Some(jose.JWSAlgorithm.PS256)
+      case _       => None
+
    def jw2rca(jwk: JWK, keyId: Uri): Try[MessageSignature.SignatureVerifier[IO, KeyIdAgent]] =
      (jwk, algtoJWSAlg(jwk.getAlgorithm)) match
-      case (rsaJWK : com.nimbusds.jose.jwk.RSAKey, Some(alg)) =>
+      case (rsaJWK: com.nimbusds.jose.jwk.RSAKey, Some(alg)) =>
         Try(RSASSA.getSignerAndVerifier(alg, signerFactory.getJCAContext.getProvider))
           .flatMap { sig => Try(SignatureVerifier(keyId, rsaJWK.toPublicKey, sig)) }
       case alg =>

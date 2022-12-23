@@ -101,7 +101,7 @@ class TestSolidLDPAuthSpec extends AnyWordSpec with Matchers with ScalatestRoute
           result
         }
    end SolidTestPost
-   import bobcats.SigningHttpMessages.`test-key-rsa-pss`
+   import bobcats.HttpMessageSignaturesV07.`test-key-rsa-pss`
    val jwk = JWK.parseFromPEMEncodedObjects(`test-key-rsa-pss`.publicKey)
 
    val lit: Rdf#Node = Literal(jwk.toJSONString, rdf.JSON)

@@ -73,7 +73,7 @@ class TestContainerFn extends munit.FunSuite:
        "Link",
        """<http://www.w3.org/ns/ldp#BasicContainer>; rel="type",
          |<http://www.w3.org/ns/ldp#Resource>; rel="type"""".stripMargin.replace("\n", "")
-     )
+     ): @unchecked
      val x = BasicContainer.filterLDPTypeLinks(Seq(l))
      assertEquals(x.size, 2)
      assertEquals(
