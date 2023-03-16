@@ -1,0 +1,21 @@
+@prefix wac: <http://www.w3.org/ns/auth/acl#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix security: <https://w3id.org/security/v1#> .
+
+<#R0> a wac:Authorization; 
+   wac:mode wac:Control;
+   wac:agent _:a ;
+   wac:default <.> .
+
+<#R1> a wac:Authorization; 
+   wac:mode wac:Read;
+   wac:agentClass foaf:Agent ;
+   wac:accessTo <.acl> .
+
+<#R2> a wac:Authorization; 
+   wac:agentClass foaf:Agent ;
+   wac:mode wac:Read;
+   wac:accessTo <.> ;
+   wac:default <.> .
+
+</rfcKey#> security:controller _:a .   

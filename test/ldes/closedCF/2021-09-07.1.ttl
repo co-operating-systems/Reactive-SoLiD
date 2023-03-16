@@ -1,0 +1,48 @@
+@prefix crop:     <https://data.cropland.be/area#> .
+@prefix cropProp: <https://data.cropland.be/measure#> .
+@prefix dcat:     <http://www.w3.org/ns/dcat#> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix ldes:     <https://w3id.org/ldes#> .
+@prefix polMsr:   <https://data.politie.be/sensors/measurement#> .
+@prefix pzDev:    <https://data.politie.be/sensor/dev#> .
+@prefix sosa:     <http://www.w3.org/ns/sosa/> .
+@prefix tree:     <https://w3id.org/tree#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+
+<>      a              tree:Node ;
+        tree:relation  [ a           tree:LessThanRelation ;
+                         tree:node   <2021-09-06> ;
+                         tree:path   sosa:resultTime ;
+                         tree:value  "2021-09-07T00:00:00+02"^^xsd:dateTimeStamp
+                       ] .
+
+<stream#>     a                   ldes:EventStream ;
+        ldes:timestampPath  sosa:resultTime ;
+        tree:member   <#658>, <#3074>, <#637>;
+        tree:shape          <flows-shacl> ;
+        tree:view           <> .
+
+<#658>  a                      sosa:Observation ;
+        <http://www.w3.org/2003/01/geo/wgs84_pos#location>
+                <area#loc> ;
+        sosa:hasSimpleResult   "5087.4795"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-07T18:30:00+02"^^xsd:dateTimeStamp .
+
+<#3074>  a                     sosa:Observation ;
+        <http://www.w3.org/2003/01/geo/wgs84_pos#location>
+                <area#loc763628> ;
+        sosa:hasSimpleResult   "1.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-07T23:00:00+02"^^xsd:dateTimeStamp .
+
+<#637>  a                      sosa:Observation ;
+        <http://www.w3.org/2003/01/geo/wgs84_pos#location>
+                <area#loc> ;
+        sosa:hasSimpleResult   "7009.3345"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-07T13:15:00+02"^^xsd:dateTimeStamp .
+
