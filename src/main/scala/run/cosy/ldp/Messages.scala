@@ -106,7 +106,7 @@ object Messages:
       )
 
    /** ScriptMsg don't yet know where they want to go, as that requires the script to be first
-     * `continue`ed, in order to find the target. Note: calling continue on the script can result in
+     * `continue`d, in order to find the target. Note: calling continue on the script can result in
      * an answer to be returned to the replyTo destination!
      */
    case class ScriptMsg[R](
@@ -128,8 +128,20 @@ object Messages:
 
    /** @param remainingPath
      *   the path to the final resource
+     * @param lastSeenContainerACL
+     *   provides a reference to the nearest container actor that has an AC resource. As the message
+     *   is routed through the hierarchy this will pickup whatever the last container states is the
+     *   last container acl. If a container no longer knows because its AC resource has been
+     *   deleted, then such a message can be used by the container to set its value. The value can
+     *   be None, if the message has not seen a container. We use actors to speed up sending
+     *   messages and since if a supervisor actor dies all its children die, it is always ok for
+     *   children to send messages directly to their parents.
      */
-   final case class RouteMsg(remainingPath: NonEmptyList[String], msg: CmdMessage[?]) extends Route:
+   final case class RouteMsg(
+       remainingPath: NonEmptyList[String],
+       msg: CmdMessage[?],
+       lastSeenContainerACL: Option[ActorRef[RouteMsg]] = None
+   ) extends Route:
       def nextSegment: String = remainingPath.head
 
       // check that path is not empty before calling  (anti-pattern)

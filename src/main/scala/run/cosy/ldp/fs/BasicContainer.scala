@@ -6,36 +6,15 @@
 
 package run.cosy.ldp.fs
 
+import _root_.run.cosy.http.util.UriX.*
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior, PostStop, PreRestart}
+import akka.event.slf4j.Slf4jLogger
 import akka.http.scaladsl.model
-import akka.http.scaladsl.model.StatusCodes.{
-  Conflict,
-  Created,
-  Gone,
-  InternalServerError,
-  MovedPermanently,
-  NoContent,
-  NotFound,
-  NotImplemented,
-  OK,
-  PermanentRedirect,
-  UnsupportedMediaType
-}
-import akka.http.scaladsl.model.headers.{
-  Accept,
-  Allow,
-  HttpChallenge,
-  Link,
-  LinkParam,
-  LinkParams,
-  LinkValue,
-  RawHeader,
-  ResponseHeader,
-  `Content-Type`,
-  `WWW-Authenticate`
-}
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse, StatusCodes, Uri}
+import akka.http.scaladsl.model.*
+import akka.http.scaladsl.model.HttpMethods.*
+import akka.http.scaladsl.model.StatusCodes.{Success as _, *}
+import akka.http.scaladsl.model.headers.*
 import akka.http.scaladsl.server.ContentNegotiator.Alternative
 import akka.http.scaladsl.server.ContentNegotiator.Alternative.ContentType
 import akka.http.scaladsl.server.{RequestContext, RouteResult}
@@ -43,31 +22,26 @@ import akka.stream.scaladsl.{Concat, FileIO, Merge, RunnableGraph, Source}
 import akka.stream.{ActorMaterializer, IOResult, Materializer}
 import akka.util.ByteString
 import akka.{Done, NotUsed}
+import run.cosy.http.RDFMediaTypes.`text/turtle`
+import run.cosy.http.auth.*
 import run.cosy.http.headers.Slug
 import run.cosy.http.{IResponse, RDFMediaTypes, RdfParser}
-import run.cosy.http.auth.{Agent, Anonymous, Guard, KeyIdAgent, WebServerAgent}
-import run.cosy.http.RDFMediaTypes.`text/turtle`
 import run.cosy.ldp.fs.BasicContainer
 import run.cosy.ldp.fs.BasicContainer.{AllowHeader, LinkHeaders, `Accept-Post`, rdfContentTypes}
 import run.cosy.ldp.{ResourceRegistry, SolidCmd}
-
-import java.io.{BufferedReader, BufferedWriter, FileReader, FileWriter}
-import java.lang.UnsupportedOperationException
-import java.nio.file.attribute.UserDefinedFileAttributeView
-import java.nio.file.{FileAlreadyExistsException, FileSystem, FileVisitOption, Files, Path}
-import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, LocalDateTime, ZoneId, ZoneOffset}
-import java.util.{Locale, stream}
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
-import scala.util.{Failure, Success, Try, Using}
-import akka.event.slf4j.Slf4jLogger
-import akka.http.scaladsl.model.HttpMethods.*
 import scalaz.NonEmptyList.nel
 import scalaz.{ICons, INil, NonEmptyList}
 
+import java.io.{BufferedReader, BufferedWriter, FileReader, FileWriter}
+import java.lang.UnsupportedOperationException
+import java.nio.file.*
+import java.nio.file.attribute.UserDefinedFileAttributeView
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalDateTime, ZoneId, ZoneOffset}
+import java.util.{Locale, stream}
 import scala.collection.immutable.HashMap
-import scala.util.Random
-import _root_.run.cosy.http.util.UriX.*
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
+import scala.util.*
 
 /** An LDP/Solid Container corresponding to a directory on the FileSystem.
   *
@@ -111,18 +85,17 @@ import _root_.run.cosy.http.util.UriX.*
   */
 object BasicContainer:
 
+   import _root_.run.cosy.RDF.Prefix.ldp
+   import _root_.run.cosy.RDF.ops.{*, given}
+   import _root_.run.cosy.RDF.{*, given}
    import akka.http.scaladsl.model.HttpHeader
    import akka.http.scaladsl.model.HttpHeader.ParsingResult.Ok
+   import org.w3.banana.*
 
    import java.nio.file.{FileTreeIterator, FileVisitOption}
    import java.time.{Clock, Instant}
-   import java.util.{Spliterator, Spliterators}
    import java.util.stream.{Stream, StreamSupport}
-
-   import org.w3.banana.*
-   import _root_.run.cosy.RDF.{given, *}
-   import _root_.run.cosy.RDF.ops.{given, *}
-   import _root_.run.cosy.RDF.Prefix.ldp
+   import java.util.{Spliterator, Spliterators}
    val ldpBC = ldp.BasicContainer.toAkka
    val ldpr  = ldp.Resource.toAkka
 
@@ -187,9 +160,9 @@ object BasicContainer:
 //		//todo: factory throws an Exception, where is that caught?
 //		StreamConverters.fromJavaStream(factory)
 //	end ls
-   import akka.http.scaladsl.model.headers.LinkParams.rel
-   import akka.http.scaladsl.model.MediaRanges.`*/*`
    import RDFMediaTypes.`text/turtle`
+   import akka.http.scaladsl.model.MediaRanges.`*/*`
+   import akka.http.scaladsl.model.headers.LinkParams.rel
 
    // get all the  URIs with link rel="type"
    def filterLDPTypeLinks(links: Seq[Link]): Seq[Uri] =
@@ -251,6 +224,17 @@ object BasicContainer:
        name: Path,
        cmd: CmdMessage[?]
    )
+
+   /** see [../README](../README.md) */
+   enum DefaultACL:
+      // we make having one's own ACL a special case as this can be directly verified on creation
+      case OwnACL
+      // there should always be an ACL for the root container so this indicates a server error
+      case NotKnown
+      // the actorRef path should be useable for constructing a relative URL
+      case ParentAcl(actor: ActorRef[?])
+
+end BasicContainer
 
 /** Class of Resource objects, mapped to a path on the file system. Our convetion for files on the
   * FS at present (later to be modularized) is designed to avoid needing to load the container
@@ -323,16 +307,15 @@ class BasicContainer private (
     dirPath: Path,
     context: Spawner
 )(using reg: ResourceRegistry):
+   import BasicContainer.*
    import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
    import akka.http.scaladsl.model.MediaTypes.{`text/plain`, `text/x-java-source`}
-   import akka.http.scaladsl.model.headers.{`Content-Type`, Link, LinkParams, LinkValue, Location}
+   import akka.http.scaladsl.model.headers.{Link, LinkParams, LinkValue, Location, `Content-Type`}
    import akka.http.scaladsl.model.{ContentTypes, HttpCharsets, HttpEntity, HttpMethods}
-   import BasicContainer.*
    import run.cosy.ldp.Messages.*
    import run.cosy.ldp.SolidCmd.{Get, Plain, Script, Wait}
-   import run.cosy.ldp.fs.{CRef, Ref, RRef}
-   import run.cosy.ldp.fs.APath
    import run.cosy.ldp.fs.Attributes.{Archived, Other, OtherAtt}
+   import run.cosy.ldp.fs.{APath, CRef, RRef, Ref}
 
    import java.nio.file.attribute.BasicFileAttributes
    import java.time.Instant
@@ -352,13 +335,19 @@ class BasicContainer private (
 
    def behavior: Behavior[AcceptMsg] =
       val isDir = Files.isDirectory(dirPath)
-      if isDir then new Dir().start
+      if isDir then
+         if Files.exists(aclPath, LinkOption.NOFOLLOW_LINKS)
+         then new Dir(defaultAcl = DefaultACL.OwnACL).start
+         else new Dir().start
       else ??? // if PUT create dir else return error
 
    // url for resource with `name` in this container
    def urlFor(name: String): Uri = containerUrl.withPath(containerUrl.path / name)
-   lazy val aclUri: Uri          = containerUrl.withPath(containerUrl.path ?/ ".acl")
-   lazy val aclHeader            = Link(aclUri, LinkParams.rel("acl"))
+
+   def aclPath: Path = dirPath.resolve(".acl")
+
+   lazy val aclUri: Uri = containerUrl.withPath(containerUrl.path ?/ ".acl")
+   lazy val aclHeader   = Link(aclUri, LinkParams.rel("acl"))
 //	lazy val dotLinkName: DotFileName = DotFileName(linkName)
 
    /** Return a Source for reading the relevant files for this directory. Note: all symbolic links
@@ -401,20 +390,22 @@ class BasicContainer private (
 //			Behaviors.same
 //		}
 
-   // the dir behavior caches info about the ldp:contains relations and about counters for files
-   // to avoid requests to the FS
-   class Dir(contains: Contents = HashMap(), counters: Counter = HashMap()):
+   /** the dir behavior caches info about
+     *   - the ldp:contains relations
+     *   - about counters for files to avoid requests to the FS
+     *   - the closest acls that could contain a default
+     */
+   class Dir(
+       contains: Contents = HashMap(),
+       counters: Counter = HashMap(),
+       defaultAcl: DefaultACL = DefaultACL.NotKnown
+   ):
 
       import akka.stream.alpakka.file.scaladsl.Directory
 
       import java.nio.file.attribute.BasicFileAttributes
       import java.time.Instant
       import scala.annotation.tailrec
-
-      /** Create ACL file. When should this be done? Certainly on creation. But what if there is no
-        * ACL on actor startup? What should be put in the ACL?
-        */
-//		def createACL(defaults: Rdf#Graph): Boolean = true
 
       lazy val start: Behavior[AcceptMsg] =
         Behaviors.receiveMessage[AcceptMsg] { (msg: AcceptMsg) =>
@@ -439,8 +430,8 @@ class BasicContainer private (
                case Get(url, k) =>
                  // 1. todo: check if we have cached version, if so continue with that
                  // 2. if not, build it from result of plain HTTP request
+                 import _root_.run.cosy.RDF.{*, given}
                  import cats.free.Free
-                 import _root_.run.cosy.RDF.{given, *}
                  // todo: we should not have to call resume here as we set everything up for plain
                  SolidCmd.getFromPlain(url, k).resume match
                   case Left(plain @ Plain(req, k)) => run(plain, agent, replyTo)
@@ -609,9 +600,9 @@ class BasicContainer private (
           fscm: cats.Functor[SolidCmd]
       ): Behavior[AcceptMsg] =
          context.log.info(s"in run received msg $plainCmd")
-         import akka.stream.alpakka.file.scaladsl.Directory
          import BasicContainer.ttlPrefix
          import RDFMediaTypes.`text/turtle`
+         import akka.stream.alpakka.file.scaladsl.Directory
          import plainCmd.req
          import req.*
          // Here I just rebuild the CmdMessage, for convenience
@@ -656,15 +647,14 @@ class BasicContainer private (
                Behaviors.same
              case POST => // create resource
                // todo: create sub container for LDPC Post
-               import java.time.Clock
                import BasicContainer.{
                  createLinkNames,
-                 filterLDPTypeLinks,
                  createNewResourceName,
+                 filterLDPTypeLinks,
                  ldpBC,
                  ldpr
                }
-               import BasicContainer.{given Clock}
+               import BasicContainer.clock
                val types = filterLDPTypeLinks(req.headers[Link])
                if types.contains(ldpBC) then
                   // todo: should one also parse the body first to check that it is well formed? Or should that
@@ -747,15 +737,44 @@ class BasicContainer private (
       end run
 
       protected def routeHttpReq(msg: RouteMsg): Behavior[AcceptMsg] =
-        msg.nextRoute match
-         case doit @ WannaDo(_) =>
-           doit.msg.target.fileName match
-            case None                   => forwardToContainer(msg.nextSegment, doit)
-            case Some(s) if s(0) == '.' => forwardToContainer(msg.nextSegment, doit)
-            case _                      => forwardMsgToResourceActor(msg.nextSegment, doit)
-         case route: Route => forwardToContainer(msg.nextSegment, route)
+//        val workingDir = msg.lastSeenContainerACL match
+//          case None => this //the message could have been sent directly
+//          case Some(lastSeenACLDir) =>
+//            defaultAcl match
+//              case DefaultACL.NotKnown =>
+//                 new Dir(contains, counters, msg.lastSeenContainerACL)
+//         if defaultAcl == DefaultACL.NotKnown then...
+         //     do we need to change the current default?
+         //      only if either
+         //      1. the current is NonKnown (which could happen on creation or if acl is deleted) and if the passed message
+         //  contains DefaultACL actor
+         //      2. the current default is pointing to a different default actor
+         // if the current actor is ThisContainer then the message should be changed to this container
+         // if we make a change locally then should we first change the directory and send the message to ourselves ?
+         //   that would make it easier, as the code that sends the message looks at the default for this directory...
+         // we could set a var to be read by that code...
+         // the problem here is clearly that the actor message sending is not in an IO that should be run when everything is
+         // finished, but is run inside the code, meaning that we don't have FP system
 
-      def forwardToContainer(name: String, route: Route): Behavior[AcceptMsg] =
+         val newDir: Option[Dir] = msg.nextRoute match
+          case doit @ WannaDo(_) =>
+            doit.msg.target.fileName match
+             case None                   => forwardToContainer(msg.nextSegment, doit)
+             case Some(s) if s(0) == '.' => forwardToContainer(msg.nextSegment, doit)
+             case _                      => forwardMsgToResourceActor(msg.nextSegment, doit)
+          case route: Route => forwardToContainer(msg.nextSegment, route)
+
+         newDir match
+          case None      => Behaviors.same
+          case Some(dir) => dir.start
+
+      /** forward Route cmd to this container, which will look either return the answer or forward
+        * the command to one if the child actors.
+        * @return
+        *   None if the behavior remains the same, Some(dir) if we should use the behavior or a more
+        *   informed directory
+        */
+      def forwardToContainer(name: String, route: Route): Option[Dir] =
          context.log.info(s"in forwardToContainer($name, $route)")
          if name.indexOf('.') > 0 then
             route.msg.respondWith(HttpResponse(
@@ -764,7 +783,7 @@ class BasicContainer private (
                 "This Solid server serves no resources with a '.' char in path segments (except for the last `file` segment)."
               )
             ))
-            Behaviors.same
+            None
          else
             getRef(name) match
              case Some(x, dir) =>
@@ -802,7 +821,7 @@ class BasicContainer private (
                        Seq(),
                        s"Resource with URI ${r.msg.target} does not exist"
                      ))
-               dir.start
+               Some(dir)
              case None =>
                route.msg.respondWith(
                  HttpResponse(
@@ -811,7 +830,7 @@ class BasicContainer private (
                      HttpEntity(s"""Resource with URI ${route.msg.target} does not exist.""")
                  )
                )
-               Behaviors.same
+               None
       end forwardToContainer
 
       /** Forward message to child resource (not container)
@@ -820,9 +839,9 @@ class BasicContainer private (
         * @param wannaDo
         *   the HttpRequest
         * @return
-        *   A new Behavior, updated if a new child actor is created.
+        *   a new Directory if information about the Dir has evolved or None
         */
-      protected def forwardMsgToResourceActor(name: String, wannaDo: WannaDo): Behavior[AcceptMsg] =
+      protected def forwardMsgToResourceActor(name: String, wannaDo: WannaDo): Option[Dir] =
          context.log.info(s"in  forwardMsgToResourceActor($name, $wannaDo")
          val dotLessName = actorNameFor(name)
          getRef(dotLessName) match
@@ -842,7 +861,7 @@ class BasicContainer private (
                  ) => // server managed resource, this is not a Container, but is "owned" by this container.
                context.log.info(s"we have a Server Managed Resource SMRef($att, $actor)")
                actor ! wannaDo
-            dir.start
+            Some(dir)
           case None =>
             wannaDo.msg.respondWith(HttpResponse(
               NotFound,
@@ -852,7 +871,7 @@ class BasicContainer private (
                    |Try posting to <${containerUrl}> container first.""".stripMargin
               )
             ))
-            Behaviors.same
+            None
       end forwardMsgToResourceActor
 
       /** Given a request for resource `name` find out what its root is. We will just take the name

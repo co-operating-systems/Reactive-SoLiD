@@ -1,6 +1,6 @@
 import Dependencies._
 
-val Scala3Version = "3.2.1"
+val Scala3Version = "3.2.2"
 
 name               := "Reactive Solid"
 organizationName   := "Henry Story"
@@ -47,7 +47,7 @@ lazy val root = project
     scalaVersion := Scala3Version,
 
     // resolvers += Resolver.bintrayRepo("akka","snapshots"), //use if testing akka snapshots
-    resolvers += Resolver.sonatypeRepo("snapshots"), // for banana-rdf
+    resolvers ++= Resolver.sonatypeOssRepos("snapshots"), // for banana-rdf
 
     libraryDependencies ++= Scala3Libs.all,
     libraryDependencies ++= JavaLibs.all,

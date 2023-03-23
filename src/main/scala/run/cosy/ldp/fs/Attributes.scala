@@ -139,17 +139,17 @@ object Attributes:
    sealed trait ManagedResource extends ActorPath
 
    case class DirAtt private[Attributes] (
-       override val path: Path,
+       dirPath: Path,
        att: BasicFileAttributes,
        collectedAt: Instant
-   ) extends Attributes(att, collectedAt), APath(path), ActorPath
+   ) extends Attributes(att, collectedAt), APath(dirPath), ActorPath
 
    case class SymLink private[Attributes] (
-       override val path: Path,
+       symPath: Path,
        to: Path,
        att: BasicFileAttributes,
        collectedAt: Instant
-   ) extends Attributes(att, collectedAt), APath(path), ActorPath
+   ) extends Attributes(att, collectedAt), APath(symPath), ActorPath
 
    /** A Managed Resource such as `.acl`, `card.acl` or `card.meta` can either have a default
      * representation (for acls this is the inclusion of the parent acl) or have a representation
@@ -157,24 +157,24 @@ object Attributes:
      * of MR with an exception as proof that it did not exist!)
      */
    case class DefaultMR private[Attributes] (
-       override val path: Path
-   ) extends ManagedResource, APath(path), ActorPath
+       mrpath: Path
+   ) extends ManagedResource, APath(mrpath), ActorPath
 
    /** Managed Resource with representation on disk */
    case class ManagedR private[Attributes] (
-       override val path: Path,
+       mpath: Path,
        att: BasicFileAttributes,
        collectedAt: Instant
-   ) extends ManagedResource, Attributes(att, collectedAt), APath(path), ActorPath
+   ) extends ManagedResource, Attributes(att, collectedAt), APath(mpath), ActorPath
 
    case class OtherAtt private[Attributes] (
-       override val path: Path,
+       opath: Path,
        att: BasicFileAttributes,
        collectedAt: Instant
-   ) extends Other, Attributes(att, collectedAt), APath(path)
+   ) extends Other, Attributes(att, collectedAt), APath(opath)
 
    case class Archived private[Attributes] (
-       override val path: Path,
+       apath: Path,
        att: BasicFileAttributes,
        collectedAt: Instant
-   ) extends Other, Attributes(att, collectedAt), APath(path)
+   ) extends Other, Attributes(att, collectedAt), APath(apath)
