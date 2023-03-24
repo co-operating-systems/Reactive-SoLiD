@@ -40,6 +40,8 @@ class TestRegistry extends munit.FunSuite:
      assertEquals(rt2.findClosest(Nil), (Nil, 1))
      assertEquals(rt2.findClosest(src), (src, 1))
 
+     assertEquals(rt1.toClosestAPath(List("src")), (Left(Nil), List(("src", rt1))))
+
      val rt3 = rt1.insert(2, src)
      assertEquals(rt3, DirTree(1, HashMap("src" -> DirTree(2))))
      assertEquals(rt3.findClosest(src), (Nil, 2))
@@ -50,6 +52,10 @@ class TestRegistry extends munit.FunSuite:
      assertEquals(rt4.findClosest(srcTstScHello), (srcTstScHello.drop(2), 3), rt4)
      assertEquals(rt4, DirTree(1, HashMap("src" -> DirTree(2, HashMap("test" -> DirTree(3))))))
 
+//     assertEquals(rt4.toClosestAPath(srcTst),null)
+     val rt4new = rt4.replace(55, List("src", "test"))
+     assertEquals(rt4new, DirTree(1, HashMap("src" -> DirTree(2, HashMap("test" -> DirTree(55))))))
+
      val rt5 = rt4.insert(4, srcTsSc)
      assertEquals(rt5.findClosest(src), (Nil, 2), rt5)
      assertEquals(rt5.findClosest(srcTstScHello), (srcTstScHello.drop(3), 4), rt5)
@@ -57,6 +63,7 @@ class TestRegistry extends munit.FunSuite:
      val rt6 = rt5.insert(5, srcTstScHello)
      assertEquals(rt6.findClosest(srcTstScHello), (Nil, 5), rt6)
 
+//     assertEquals(rt6.toClosestAPath(srcTsSc),null)
      val rt7 = rt6.delete(srcTsSc)
      assertEquals(rt7, Some(rt4), rt7)
 
@@ -112,21 +119,21 @@ class TestRegistry extends munit.FunSuite:
    }
 
    test("stack safety") {
-     val root = DirTree(0)
-     val values: Seq[Int] = 1 to 5000
+     val root              = DirTree(0)
+     val values: Seq[Int]  = 1 to 5000
      val path: Seq[String] = values.map(_.toString)
      val dts: List[DirTree[Int]] =
        values.toList.foldLeft(List(root)) { (dts, i) =>
-         dts.head.insert(i, path.take(i).toList)::dts
+         dts.head.insert(i, path.take(i).toList) :: dts
        }.reverse
-     //test a few values in dts
+     // test a few values in dts
      val dt1 = dts(1)
-     assertEquals(dt1,DirTree(0, HashMap("1" -> DirTree(1))))
+     assertEquals(dt1, DirTree(0, HashMap("1" -> DirTree(1))))
      val dt2 = dts(2)
      assertEquals(dt2, DirTree(0, HashMap("1" -> DirTree(1, HashMap("2" -> DirTree(2))))))
      assertEquals(dts(10).findClosest(path.take(9).toList), (Nil, 9))
      assertEquals(dts(10).findClosest(path.take(11).toList), (List("11"), 10))
-     assertEquals(dts(10).findClosest(path.take(12).toList), (List("11","12"), 10))
+     assertEquals(dts(10).findClosest(path.take(12).toList), (List("11", "12"), 10))
      val dt2000 = dts(2000)
      assertEquals(dt2000.findClosest(path.take(1999).toList), (Nil, 1999))
      assertEquals(dt2000.findClosest(path.take(1000).toList), (Nil, 1000))
@@ -135,9 +142,9 @@ class TestRegistry extends munit.FunSuite:
      assertEquals(dt4990.findClosest(path.take(1000).toList), (Nil, 1000))
      assertEquals(dt4990.findClosest(path.take(4990).toList), (Nil, 4990))
      assertEquals(dt4990.findClosest(path.take(4991).toList), (List("4991"), 4990))
-     assertEquals(dt4990.findClosest(path.take(4992).toList), (List("4991","4992"), 4990))
-     val dt4999 = dts(4999)
+     assertEquals(dt4990.findClosest(path.take(4992).toList), (List("4991", "4992"), 4990))
+     val dt4999        = dts(4999)
      val dt4991Deleted = dt4999.delete(path.take(4991).toList)
      assert(dt4991Deleted.isDefined)
-     assertEquals(dt4991Deleted.get,dt4990)
+     assertEquals(dt4991Deleted.get, dt4990)
    }

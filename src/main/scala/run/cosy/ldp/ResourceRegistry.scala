@@ -104,64 +104,55 @@ object ResourceRegistry extends ExtensionId[ResourceRegistry]:
   * dependencies.
   */
 object DirTree:
-  // a path of directory names, starting from the root going inwards
-  // todo: could one also use directly a construct from Akka actor path?
-  type Path = List[String]
+   // a path of directory names, starting from the root going inwards
+   // todo: could one also use directly a construct from Akka actor path?
+   type Path = List[String]
 
-  /** A Path of DirTree[A]s is used to take apart a DirTree[A] structure, in the reverse direction.
-    * Note the idea is that each link (name, dt) points from dt via name in the hashMap to the next
-    * deeper node. The APath is in reverse direction so we have List( "newName" <- dir2 , "dir2in1"
-    * <- dir1 , "dir1" <- rootDir ) An empty List would just refer to the root DirTree[A]
-    */
-  type ALink[A] = (String, DirTree[A])
-  type APath[A] = List[ALink[A]]
-  // the first projection is the remaining path
-  type SearchAPath[A] = (Path, APath[A])
+   /** A Path of DirTree[A]s is used to take apart a DirTree[A] structure, in the reverse direction.
+     * Note the idea is that each link (name, dt) points from dt via name in the hashMap to the next
+     * deeper node. The APath is in reverse direction so we have List( "newName" <- dir2 , "dir2in1"
+     * <- dir1 , "dir1" <- rootDir ) An empty List would just refer to the root DirTree[A]
+     */
+   type ALink[A] = (String, DirTree[A])
+   type APath[A] = List[ALink[A]]
+   // the first projection is either
+   //   -Right: the object at the end of the path
+   //   -Left: the remaining path. If it is Nil then the path is pointing into a position to which one can add
+   // the second is the A Path, so that the object can be reconsistuted
+   type SearchAPath[A] = (Either[Path, DirTree[A]], APath[A])
 
-  extension [A](dt: DirTree[A])
-     /** @param at path to resource A
-       * @return
-       * a pair of the remaining path and A
-       */
-     @tailrec
-     def findClosest(at: Path): (Path, A) =
-       at match
+   extension [A](dt: DirTree[A])
+      /** @param at
+        *   path to resource A
+        * @return
+        *   a pair of the remaining path and A
+        */
+      @tailrec
+      def findClosest(at: Path): (Path, A) =
+        at match
          case Nil => (at, dt.a)
          case name :: tail =>
            dt.kids.get(name) match
-             case None => (at, dt.a)
-             case Some(tree) =>
-               tree.findClosest(tail) //this should be recursive!
+            case None => (at, dt.a)
+            case Some(tree) =>
+              tree.findClosest(tail) // this should be recursive!
 
-     /** note we can only find the closest path to something if the path is not empty */
-     def toClosestAPath(path: Path): SearchAPath[A] =
-       @tailrec
-       def loop(dt: DirTree[A], path: Path, result: APath[A]): SearchAPath[A] =
-         path match
-           case Nil => (Nil, result)
-           case name :: rest =>
-             if dt.kids.isEmpty then (rest, (name, dt) :: result)
-             else
-               dt.kids.get(name) match
-                 case None => (rest, (name, dt) :: result)
-                 case Some(dtchild) =>
-                   loop(dtchild, rest, (name, dt) :: result)
-       end loop
-       loop(dt, path, Nil)
-     end toClosestAPath
-
-  
-//     @tailrec
-//     def deleteNE(name: String, remaining: List[String]): DirTree[A] =
-//       dt.kids.get(name) match
-//         case None => dt
-//         case Some(tree) =>
-//           remaining match
-//             case Nil => DirTree(dt.a, dt.kids - name)
-//             case head :: tail =>
-//               val alt = tree.deleteNE(head, tail) //
-//               DirTree(dt.a, dt.kids + (name -> alt))
-//
+      /** note we can only find the closest path to something if the path is not empty */
+      def toClosestAPath(path: Path): SearchAPath[A] =
+         @tailrec
+         def loop(dt: DirTree[A], path: Path, result: APath[A]): SearchAPath[A] =
+           path match
+            case Nil => (Right(dt), result)
+            case name :: rest =>
+              if dt.kids.isEmpty then (Left(rest), (name, dt) :: result)
+              else
+                 dt.kids.get(name) match
+                  case None => (Left(rest), (name, dt) :: result)
+                  case Some(dtchild) =>
+                    loop(dtchild, rest, (name, dt) :: result)
+         end loop
+         loop(dt, path, Nil)
+      end toClosestAPath
 
 end DirTree
 
@@ -181,45 +172,51 @@ case class DirTree[A](a: A, kids: HashMap[String, DirTree[A]] = HashMap()):
      * subtree
      */
    final def insert(newRef: A, at: Path): DirTree[A] =
-     place(at){ _ => new DirTree(newRef)} // we forget all subtrees of dt
+     place(at) {
+       case (Left(Nil), (name, dt) :: apath) =>
+         (apath, new DirTree(dt.a, dt.kids + (name -> DirTree(newRef))))
+       case (Right(_), apath) => (apath, DirTree(newRef))
+       // something remains, so we can't insert. We stay where we are
+       case _ => (Nil, this)
+     }
+//       _ => new DirTree(newRef)}{(name: String,dt: DirTree[A]) => new DirTree(dt.a, dt.kids + (name -> DirTree(newRef))) } // we forget all subtrees of dt
 
-   final def place(at: Path)(f: DirTree[A] => DirTree[A]): DirTree[A] =
+   final def place(at: Path)(buildRootDT: SearchAPath[A] => (APath[A], DirTree[A])): DirTree[A] =
       @tailrec
       def loop(path: APath[A], result: DirTree[A]): DirTree[A] =
         path match
          case Nil                 => result
          case (name, obj) :: tail => loop(tail, DirTree(obj.a, obj.kids + (name -> result)))
 
-       // note here we loose any subtrees below the insertion.
-      this.toClosestAPath(at) match
-          case (Nil, Nil) => f(this)
-          case (Nil, apath) => loop(apath, f(apath.head._2))
-          // something remains, so we can't insert. We stay where we are
-          case other => this
+      // note here we loose any subtrees below the insertion.
+      val cpath: SearchAPath[A] = this.toClosestAPath(at)
+      val (p, dt)               = buildRootDT(cpath)
+      loop(p, dt)
    end place
-   
 
    /** we need to replace the A at at path, but keep everything else the same. This happens when a
      * property of the ref changes, but not the tree structure, eg. if we keep the same ActorRef but
      * change the info about acls
      */
    final def replace(newRef: A, at: Path): DirTree[A] =
-     place(at){ (dt: DirTree[A]) => new DirTree(newRef, dt.kids)}
+     place(at) {
+       case (Left(Nil), (name, dt) :: apath) =>
+         // the object does not exist, so we'll just place this one
+         (apath, new DirTree(dt.a, dt.kids + (name -> DirTree(newRef))))
+       case (Right(o), (name, dt) :: apath) => // (apath, new DirTree(dt.a, dt.kids - name))
+         (apath, new DirTree(dt.a, dt.kids + (name -> DirTree(newRef, o.kids))))
+       // something remains, so we can't insert. We stay where we are
+       case _ => (Nil, this)
+     }
 
    def delete(at: Path): Option[DirTree[A]] =
-     @tailrec
-     def loop(remaining: APath[A], result: DirTree[A]): Option[DirTree[A]] =
-       remaining match
-         case Nil => Some(result)
-         case head::tail =>
-           val (name, dt) = head
-           loop(tail, DirTree(dt.a, dt.kids + (name -> result)))
+     if at.isEmpty then None
+     else
+        Some(place(at) {
+          case (Left(Nil), (name, dt) :: apath) => (apath, new DirTree(dt.a, dt.kids - name))
+          case (Right(o), (name, dt) :: apath)  => (apath, new DirTree(dt.a, dt.kids - name))
+          // something remains, so we can't insert. We stay where we are
+          case _ => (Nil, this)
+        })
 
-     this.toClosestAPath(at) match
-       case (Nil, Nil) => None
-       case (Nil, (name,dt)::apath) => loop(apath,DirTree(dt.a,dt.kids - name))
-     // something remains, so we can't insert. We stay where we are
-       case other => None
-     
 end DirTree
-
