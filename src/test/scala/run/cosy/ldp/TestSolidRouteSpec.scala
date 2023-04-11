@@ -9,11 +9,11 @@ package run.cosy.ldp
 import akka.actor.testkit.typed.scaladsl.{ActorTestKit, TestProbe}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior, Scheduler}
 import akka.http.javadsl.model.headers.HttpCredentials
-import akka.http.scaladsl.model.headers.*
 import akka.http.scaladsl.model.*
 import akka.http.scaladsl.model.HttpHeader.ParsingResult.Ok
 import akka.http.scaladsl.model.MediaRanges.`*/*`
 import akka.http.scaladsl.model.StatusCodes.*
+import akka.http.scaladsl.model.headers.*
 import akka.http.scaladsl.server.AuthenticationFailedRejection
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsRejected
 import akka.http.scaladsl.testkit.ScalatestRouteTest
@@ -21,17 +21,18 @@ import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.util.Timeout
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import run.cosy.http.auth.{Agent, Anonymous, HttpSigDirective, WebIdAgent, WebServerAgent}
+import run.cosy.RDF.*
+import run.cosy.RDF.Prefix.wac
+import run.cosy.RDF.ops.*
+import run.cosy.http.RDFMediaTypes.`text/turtle`
+import run.cosy.http.auth.*
 import run.cosy.http.headers.Slug
-import run.cosy.ldp.fs.BasicContainer
 import run.cosy.http.util.UriX.*
+import run.cosy.http.{RDFMediaTypes, RdfParser}
+import run.cosy.ldp.fs.BasicContainer
+import run.cosy.ldp.ACLInfo.*
 import run.cosy.ldp.testUtils.TmpDir.{createDir, deleteDir}
 import run.cosy.{Solid, SolidTest}
-import run.cosy.RDF.*
-import run.cosy.RDF.ops.*
-import run.cosy.RDF.Prefix.wac
-import run.cosy.http.RDFMediaTypes.`text/turtle`
-import run.cosy.http.{RDFMediaTypes, RdfParser}
 
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
@@ -57,9 +58,9 @@ object TestSolidRouteSpec:
 
 class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTest:
 
+   import TestSolidRouteSpec.*
    import akka.http.scaladsl.client.RequestBuilding as Req
    import akka.http.scaladsl.server.Directives
-   import TestSolidRouteSpec.*
 
    val dirPath: Path = createDir("solidTest_")
 
@@ -80,8 +81,11 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
    def toUri(path: String): Uri = rootUri.withPath(Uri.Path(path))
 
    def withServer(test: Solid => Any): Unit =
-      val testKit                                      = ActorTestKit()
-      val rootCntr: Behavior[BasicContainer.AcceptMsg] = BasicContainer(rootUri, dirPath)
+      val testKit = ActorTestKit()
+      val rootCntr: Behavior[BasicContainer.AcceptMsg] = BasicContainer(
+        rootUri, dirPath,
+        NotKnown
+      )
       val rootActr: ActorRef[BasicContainer.AcceptMsg] = testKit.spawn(rootCntr, "solid")
       val solid = new Solid(rootUri, dirPath, registry, rootActr)
       try
@@ -266,7 +270,7 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
           }
 
       def newContainer(baseDir: Uri, slug: Slug): Uri =
-        Req.Post(baseDir).withHeaders(slug, BasicContainer.LinkHeaders) ~>
+        Req.Post(baseDir).withHeaders(slug, BasicContainer.LDPLinkHeaders) ~>
           solid.routeLdp(agent) ~> check {
             status shouldEqual Created
             header[Location].get.uri

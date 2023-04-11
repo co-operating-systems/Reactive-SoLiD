@@ -6,14 +6,17 @@
 
 package run.cosy.http.auth
 
+import akka.actor.typed.ActorRef
 import akka.http.scaladsl.model.{HttpMethod, Uri}
 import org.w3.banana.{PointedGraphs, WebACLPrefix}
 import run.cosy.ldp.SolidCmd.ReqDataSet
 import akka.actor.typed.scaladsl.ActorContext
 import akka.http.scaladsl.model.headers.{Link, LinkParam, LinkParams}
 import cats.free.Free
-import run.cosy.ldp.Messages.CmdMessage
+import run.cosy.ldp.Messages.{CmdMessage, Route}
+import run.cosy.ldp.fs.BasicContainer
 import run.cosy.ldp.rdf.LocatedGraphs.{LGs, LocatedGraph, Pointed, PtsLGraph}
+import run.cosy.ldp.ACLInfo.*
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
@@ -170,10 +173,11 @@ object Guard:
    /** we authorize the top command `msg` - it does not really matter what T the end result is.
      * @param msg
      *   the message to authorize
+     * @param msgACL the closest default ACL from the message if known
      * @param aclUri
      *   the URL of the acl that allows access
      */
-   def Authorize[T](msg: CmdMessage[T], aclUri: Uri)(using
+   def Authorize[T](msg: CmdMessage[T], msgACL: MsgACL, aclUri: Uri)(using
        context: ActorContext[ScriptMsg[?] | Do]
    ): Unit =
       // todo!!: set timeout in config!!
@@ -188,7 +192,20 @@ object Guard:
          msg.commands match
           case p: Plain[?] =>
             import msg.given
-            // this script should be sent with admin rights.
+            def effectiveAclUrl(currentCtxt: ActorContext[?], aclRef: ActorRef[?], thisUri: Uri): Uri =
+              val cp = currentCtxt.self.path
+              val aclP = aclRef.path
+              var depth = cp.elements.size - aclP.elements.size
+              var revp = thisUri.path.reverse
+              while (depth >= 0) do
+                revp = revp.tail
+                depth = depth - 1
+              thisUri.copy(path=revp.reverse ?/ ".acl")
+            end effectiveAclUrl
+            val activeAcl = msgACL match
+              case NotKnown =>  aclUri
+              case ParentAcl(containerRef, _) => effectiveAclUrl(context,containerRef,aclUri)
+            // this script is sent with admin rights.
             // note: it could also be sent with the rights of the user, meaning that if the user cannot
             //   read an acl rule, then it has no access. But that would slow things down as it would require
             //   every request on every acl to be access controlled!
@@ -201,8 +218,7 @@ object Guard:
                   ref
                 )
             ) {
-              case Success(true) =>
-                Do(msg)
+              case Success(true) => Do(msg)
               case Success(false) =>
                 context.log.info(s"failed to authorize ${msg.target} ")
                 msg.respondWithScr(HttpResponse(
@@ -223,7 +239,7 @@ object Guard:
                   HttpEntity(ContentTypes.`text/plain(UTF-8)`, e.getMessage)
                 ))
             }
-          case _ => // the other messages end up getting translated to Plain reuests . todo: check
+          case _ => // the other messages end up getting translated to Plain requests . todo: check
             context.self ! Do(msg)
    end Authorize
 

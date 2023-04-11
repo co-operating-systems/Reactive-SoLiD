@@ -27,7 +27,7 @@ import run.cosy.http.auth.*
 import run.cosy.http.headers.Slug
 import run.cosy.http.{IResponse, RDFMediaTypes, RdfParser}
 import run.cosy.ldp.fs.BasicContainer
-import run.cosy.ldp.fs.BasicContainer.{AllowHeader, LinkHeaders, `Accept-Post`, rdfContentTypes}
+import run.cosy.ldp.fs.BasicContainer.{AllowHeader, LDPLinkHeaders, `Accept-Post`, rdfContentTypes}
 import run.cosy.ldp.{ResourceRegistry, SolidCmd}
 import scalaz.NonEmptyList.nel
 import scalaz.{ICons, INil, NonEmptyList}
@@ -173,7 +173,7 @@ object BasicContainer:
        }
      }
 
-   val LinkHeaders = Link(
+   val LDPLinkHeaders = Link(
      LinkValue(ldp.BasicContainer.toAkka, rel("type")),
      LinkValue(ldp.Resource.toAkka, rel("type"))
    )
@@ -196,21 +196,22 @@ object BasicContainer:
      )
    )
 
+   import run.cosy.ldp.ACLInfo.*
    import run.cosy.ldp.Messages.*
 
    type AcceptMsg = Cmd | PostCreation
 
    def apply(
        containerUrl: Uri,
-       dir: Path
+       dir: Path,
+       parentDefaultAcl: MsgACL
    )(using reg: ResourceRegistry): Behavior[AcceptMsg] =
      Behaviors.setup[AcceptMsg] { (context: ActorContext[AcceptMsg]) =>
         // val exists = Files.exists(root)
-        reg.addActorRef(containerUrl.path, context.self)
         context.log.info(
           s"started actor for <${containerUrl}> in dir <file:/${dir.toAbsolutePath}>"
         )
-        new BasicContainer(containerUrl, dir, new Spawner(context)).behavior
+        new BasicContainer(containerUrl, dir, new Spawner(context)).behavior(parentDefaultAcl)
      }
 
    /** The resource with `name` has been created, but the request `cmd` must still be completed.
@@ -224,15 +225,6 @@ object BasicContainer:
        name: Path,
        cmd: CmdMessage[?]
    )
-
-   /** see [../README](../README.md) */
-   enum DefaultACL:
-      // we make having one's own ACL a special case as this can be directly verified on creation
-      case OwnACL
-      // there should always be an ACL for the root container so this indicates a server error
-      case NotKnown
-      // the actorRef path should be useable for constructing a relative URL
-      case ParentAcl(actor: ActorRef[?])
 
 end BasicContainer
 
@@ -312,6 +304,7 @@ class BasicContainer private (
    import akka.http.scaladsl.model.MediaTypes.{`text/plain`, `text/x-java-source`}
    import akka.http.scaladsl.model.headers.{Link, LinkParams, LinkValue, Location, `Content-Type`}
    import akka.http.scaladsl.model.{ContentTypes, HttpCharsets, HttpEntity, HttpMethods}
+   import run.cosy.ldp.ACLInfo.*
    import run.cosy.ldp.Messages.*
    import run.cosy.ldp.SolidCmd.{Get, Plain, Script, Wait}
    import run.cosy.ldp.fs.Attributes.{Archived, Other, OtherAtt}
@@ -333,12 +326,14 @@ class BasicContainer private (
    //					Behaviors.stopped
    //			}
 
-   def behavior: Behavior[AcceptMsg] =
+   def behavior(aclLink: MsgACL): Behavior[AcceptMsg] =
       val isDir = Files.isDirectory(dirPath)
       if isDir then
-         if Files.exists(aclPath, LinkOption.NOFOLLOW_LINKS)
-         then new Dir(defaultAcl = DefaultACL.OwnACL).start
-         else new Dir().start
+         val aclProp =
+            val aclExists = Files.exists(aclPath, LinkOption.NOFOLLOW_LINKS)
+            reg.addActorRef(containerUrl.path, context.context.self, aclExists)
+            if aclExists then OwnACL else aclLink
+         Dir(effectiveAcl = aclProp).start
       else ??? // if PUT create dir else return error
 
    // url for resource with `name` in this container
@@ -346,8 +341,10 @@ class BasicContainer private (
 
    def aclPath: Path = dirPath.resolve(".acl")
 
+   /** aclUri could also be relative */
    lazy val aclUri: Uri = containerUrl.withPath(containerUrl.path ?/ ".acl")
-   lazy val aclHeader   = Link(aclUri, LinkParams.rel("acl"))
+   // todo: this could be simpler with a raw header Raw("Link", "<.acl>")
+   lazy val AclLinkHeader = Link(aclUri, LinkParams.rel("acl"))
 //	lazy val dotLinkName: DotFileName = DotFileName(linkName)
 
    /** Return a Source for reading the relevant files for this directory. Note: all symbolic links
@@ -395,10 +392,10 @@ class BasicContainer private (
      *   - about counters for files to avoid requests to the FS
      *   - the closest acls that could contain a default
      */
-   class Dir(
+   case class Dir(
        contains: Contents = HashMap(),
        counters: Counter = HashMap(),
-       defaultAcl: DefaultACL = DefaultACL.NotKnown
+       effectiveAcl: ACLActorInfo = NotKnown
    ):
 
       import akka.stream.alpakka.file.scaladsl.Directory
@@ -407,15 +404,31 @@ class BasicContainer private (
       import java.time.Instant
       import scala.annotation.tailrec
 
+      /** any default acl can only be a few containers up, so we calulate the number This then
+        * allows us to build a relative url for the acl, where we have the following correspondence:
+        * 0 -> <.acl> 1 -> <../.acl> 2 -> <../../.acl> etc...
+        */
+      val EffectiveAcl: Option[RawHeader] =
+        effectiveAcl match
+         case NotKnown => None
+         case OwnACL   => None // the acl link is enough!
+         case ParentAcl(ref, fromReg) =>
+           val d    = context.context.self.path.elements.size - ref.path.elements.size
+           val path = Seq.fill(d)("..").mkString("/") + { if d > 0 then "/" else "" } + ".acl"
+           Some(RawHeader("Link",
+             s"""<$path>; rel="https://www.w3.org/ns/auth/acl#accessControl""""))
+
       lazy val start: Behavior[AcceptMsg] =
         Behaviors.receiveMessage[AcceptMsg] { (msg: AcceptMsg) =>
            context.log.info(s"received in ${containerUrl.path} message $msg")
            import BasicContainer.PostCreation
            msg match
-            case wd: WannaDo =>
+            case WannaDo(msg, lastSeenAcl) =>
+              // todo: is this the best actor context?
               given ac: ActorContext[ScriptMsg[?] | Do] =
                 context.context.asInstanceOf[ActorContext[ScriptMsg[?] | Do]]
-              Guard.Authorize(wd.msg, aclUri)
+                // we need to work out what the aclUri is from the lastSeenAcl
+              Guard.Authorize(msg, lastSeenAcl, aclUri)
               Behaviors.same
             case script: ScriptMsg[?] =>
               import script.given
@@ -452,7 +465,7 @@ class BasicContainer private (
                 Created,
                 Location(
                   containerUrl.withPath(containerUrl.path / "")
-                ) :: LinkHeaders :: AllowHeader :: Nil
+                ) :: LDPLinkHeaders :: AllowHeader :: AclLinkHeader :: EffectiveAcl.toList
               ))
               Behaviors.same
             case routeMsg: RouteMsg => routeHttpReq(routeMsg)
@@ -484,7 +497,8 @@ class BasicContainer private (
            v match
             case ref: Ref => (ref, Dir.this)
             case fa: ActorPath =>
-              val r = context.spawn(fa, urlFor(name))
+              val r = context.spawn(fa, urlFor(name),
+                effectiveAcl.resolve(context.context.self))
               (r, new Dir(contains + (name -> r), counters))
          }.orElse {
            import java.io.IOException
@@ -494,7 +508,8 @@ class BasicContainer private (
            context.log.info(s"resolved <$dirPath>.resolve($name)=$path")
            Attributes.actorPath(path) match
             case Success(att: APath) =>
-              val r: Ref = context.spawn(att, urlFor(name))
+              val r: Ref = context.spawn(att, urlFor(name),
+                effectiveAcl.resolve(context.context.self))
               Some((r, new Dir(contains + (name -> r), counters)))
             case Failure(err) =>
               err match
@@ -525,7 +540,7 @@ class BasicContainer private (
 
       def createDir(newDirName: String): Try[(CRef, Dir)] =
         Attributes.createDir(dirPath, newDirName).map { att =>
-           val ref = context.spawnDir(att, urlFor(newDirName))
+           val ref = context.spawnDir(att, effectiveAcl, urlFor(newDirName))
            (ref, new Dir(contains + (newDirName -> ref), counters))
         }
 
@@ -622,7 +637,7 @@ class BasicContainer private (
              case OPTIONS =>
                pcmd.respondWith(HttpResponse( // todo, add more
                  NoContent,
-                 `Accept-Post` :: AllowHeader :: Nil
+                 `Accept-Post` :: LDPLinkHeaders :: AllowHeader :: AclLinkHeader :: EffectiveAcl.toList
                ))
                Behaviors.same
              case GET | HEAD => // return visible contents of directory
@@ -630,7 +645,8 @@ class BasicContainer private (
                if req.headers[Accept].exists(_.mediaRanges.exists(_.matches(`text/turtle`))) then
                   pcmd.respondWith(HttpResponse(
                     OK,
-                    aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
+                    AclLinkHeader :: LDPLinkHeaders :: `Accept-Post`
+                      :: AllowHeader :: EffectiveAcl.toList,
                     HttpEntity(
                       `text/turtle`.toContentType,
                       Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_)).map(s =>
@@ -641,20 +657,20 @@ class BasicContainer private (
                else
                   pcmd.respondWith(HttpResponse(
                     UnsupportedMediaType,
-                    aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
+                    AclLinkHeader :: LDPLinkHeaders :: `Accept-Post` :: AllowHeader :: EffectiveAcl.toList,
                     HttpEntity("We only support text/turtle media type at the moment")
                   ))
                Behaviors.same
              case POST => // create resource
                // todo: create sub container for LDPC Post
                import BasicContainer.{
+                 clock,
                  createLinkNames,
                  createNewResourceName,
                  filterLDPTypeLinks,
                  ldpBC,
                  ldpr
                }
-               import BasicContainer.clock
                val types = filterLDPTypeLinks(req.headers[Link])
                if types.contains(ldpBC) then
                   // todo: should one also parse the body first to check that it is well formed? Or should that
@@ -717,7 +733,7 @@ class BasicContainer private (
                else
                   pcmd.respondWith(HttpResponse(
                     Conflict,
-                    aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
+                    AclLinkHeader :: LDPLinkHeaders :: `Accept-Post` :: AllowHeader :: EffectiveAcl.toList,
                     entity = HttpEntity(
                       `text/turtle`.toContentType,
                       Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_))
@@ -736,43 +752,46 @@ class BasicContainer private (
                Behaviors.same
       end run
 
+      /** all RouteMsg are passed through here and forwarded or changed to a WannaDo with the last
+        * seen container set. The returned behavior is potentially an updated Dir if either
+        * ldp:contains actors have changed or if we can work out that there is a new default ACL to
+        * point to.
+        */
       protected def routeHttpReq(msg: RouteMsg): Behavior[AcceptMsg] =
-//        val workingDir = msg.lastSeenContainerACL match
-//          case None => this //the message could have been sent directly
-//          case Some(lastSeenACLDir) =>
-//            defaultAcl match
-//              case DefaultACL.NotKnown =>
-//                 new Dir(contains, counters, msg.lastSeenContainerACL)
-//         if defaultAcl == DefaultACL.NotKnown then...
-         //     do we need to change the current default?
-         //      only if either
-         //      1. the current is NonKnown (which could happen on creation or if acl is deleted) and if the passed message
-         //  contains DefaultACL actor
-         //      2. the current default is pointing to a different default actor
-         // if the current actor is ThisContainer then the message should be changed to this container
-         // if we make a change locally then should we first change the directory and send the message to ourselves ?
-         //   that would make it easier, as the code that sends the message looks at the default for this directory...
-         // we could set a var to be read by that code...
-         // the problem here is clearly that the actor message sending is not in an IO that should be run when everything is
-         // finished, but is run inside the code, meaning that we don't have FP system
+         // the second projection is true if there is a change to the current dir lastMessage state
+         val newMsgAcl: (MsgACL, Boolean) = (effectiveAcl, msg.lastSeenContainerACL) match
+          case (NotKnown, msgLastSeen) => (msgLastSeen, NotKnown != msgLastSeen)
+          case (OwnACL, msgLastSeen) =>
+            (ParentAcl(context.context.self, false), false)
+          case (parent: ParentAcl, NotKnown) => (parent, false)
+          case (local: ParentAcl, msgAcl: ParentAcl) =>
+            if local.actor == msgAcl.actor then (local, false)
+            else (msgAcl, true)
 
-         val newDir: Option[Dir] = msg.nextRoute match
-          case doit @ WannaDo(_) =>
+         val newDir: Option[Dir] = msg.nextRoute(newMsgAcl._1) match
+          case doit: WannaDo =>
             doit.msg.target.fileName match
              case None                   => forwardToContainer(msg.nextSegment, doit)
              case Some(s) if s(0) == '.' => forwardToContainer(msg.nextSegment, doit)
              case _                      => forwardMsgToResourceActor(msg.nextSegment, doit)
           case route: Route => forwardToContainer(msg.nextSegment, route)
 
-         newDir match
-          case None      => Behaviors.same
-          case Some(dir) => dir.start
+         def updateDir(d: Dir) =
+           if newMsgAcl._2 then d.copy(effectiveAcl = newMsgAcl._1) else d
 
-      /** forward Route cmd to this container, which will look either return the answer or forward
-        * the command to one if the child actors.
+         newDir match
+          case None if newMsgAcl._2 => updateDir(this).start
+          case None                 => Behaviors.same
+          case Some(dir)            => updateDir(dir).start
+
+      end routeHttpReq
+
+      /** forward as a side-effect the Route, which will either respond to the client with the HTTP
+        * answer or forward the command to one if the child actors. note: the route message has been
+        * update with the default acl if known
         * @return
-        *   None if the behavior remains the same, Some(dir) if we should use the behavior or a more
-        *   informed directory
+        *   None if the behavior remains the same, Some(dir) if we should use update the static
+        *   information for this directory
         */
       def forwardToContainer(name: String, route: Route): Option[Dir] =
          context.log.info(s"in forwardToContainer($name, $route)")
@@ -788,7 +807,7 @@ class BasicContainer private (
             getRef(name) match
              case Some(x, dir) =>
                x match
-                case CRef(att, actor) => actor ! route
+                case CRef(att, actor)  => actor ! route
                 case SMRef(
                       att,
                       actor
@@ -809,7 +828,7 @@ class BasicContainer private (
                      ))
                 case RRef(att, actor) => // there is no container, so redirect to resource
                   route match
-                   case WannaDo(cmd) => // we're at the path end, so we can redirect
+                   case WannaDo(cmd, lastSeenAcl) => // we're at the path end, so we can redirect
                      val redirectTo = cmd.target.withoutSlash
                      route.msg.redirectTo(
                        redirectTo,

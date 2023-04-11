@@ -14,14 +14,7 @@ import _root_.akka.actor.typed.ActorRef
 import _root_.akka.actor.typed.scaladsl
 import _root_.akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import _root_.akka.http.scaladsl.model.Uri.Path
-import _root_.akka.http.scaladsl.model.{
-  ContentTypes,
-  HttpEntity,
-  HttpRequest,
-  MediaRange,
-  MediaRanges,
-  MediaTypes
-}
+import _root_.akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, MediaRange, MediaRanges, MediaTypes}
 import run.cosy.ldp.{Messages, ResourceRegistry, SolidCmd}
 import run.cosy.ldp.fs.BasicContainer
 
@@ -43,9 +36,10 @@ import akka.http.scaladsl.model.Uri
 import run.cosy.http.auth.WebServerAgent
 import run.cosy.ldp.testUtils.TmpDir
 import run.cosy.ldp.Messages.CmdMessage
+import run.cosy.ldp.ACLInfo.*
 
 import java.nio.file
-import scalaz.NonEmptyList
+import cats.data.NonEmptyList
 
 class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers:
 
@@ -64,7 +58,7 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
       val rootUri = Uri("http://localhost:8080")
 
       given registry: ResourceRegistry                 = ResourceRegistry(testKit.system)
-      val rootCntr: Behavior[BasicContainer.AcceptMsg] = BasicContainer(rootUri, dirPath)
+      val rootCntr: Behavior[BasicContainer.AcceptMsg] = BasicContainer(rootUri, dirPath, NotKnown)
       val rootActr: ActorRef[BasicContainer.AcceptMsg] = testKit.spawn(rootCntr, "solid")
       val probe                                        = testKit.createTestProbe[HttpResponse]()
       given classic: ActorSystem                       = testKit.system.classicSystem
@@ -94,7 +88,7 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
       {
         // Read Hello
         rootActr ! Messages.RouteMsg(
-          NonEmptyList("Hello"),
+          NonEmptyList.one("Hello"),
           CmdMessage(
             SolidCmd.plain(
               HttpRequest(
@@ -105,7 +99,8 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
             ),
             WebServerAgent,
             probe.ref
-          )
+          ),
+          NotKnown
         )
         val HttpResponse(status, hdrs, response, protocol) = probe.receiveMessage(): @unchecked
         assert(status == OK)

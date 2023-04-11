@@ -9,36 +9,41 @@ package run.cosy.ldp
 import akka.actor.typed.*
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
-import cats.data.NonEmptyList
 import run.cosy.ldp.fs.BasicContainer
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
-import scala.collection.immutable.HashMap
+import run.cosy.ldp.DirTree
+import run.cosy.ldp.ACLInfo.*
 
 /** A Path to T Database that can be access and altered by multiple threads
   *
-  * @tparam T
+  * @tparam R the type of the Reference
+  * @tparam A the type of the attributes
   */
-trait PathDB[T]:
+trait PathDB[R, A]:
 
    import run.cosy.Solid.pathToList
+   def hasAcl(a: A): Boolean
 
    /** todo: this should be a tree of paths so that if a branch higher up dies todo: then the whole
      * subtree can be pruned
      */
-   val pathMap: AtomicReference[Option[DirTree[T]]] = new AtomicReference(None)
+   val pathMap: AtomicReference[Option[DirTree[R, A]]] = new AtomicReference(None)
 
    /** add an actor Ref to the local DB */
-   def addActorRef(path: Uri.Path, actorRef: T): Unit =
+   def addActorRef(path: Uri.Path, actorRef: R, optAttr: A): Unit =
      pathMap.updateAndGet { tree =>
         val pathLst = pathToList(path)
         tree match
-         case None      => if (pathLst.isEmpty) then Some(DirTree(actorRef)) else None
-         case Some(ref) => Some(ref.insert(actorRef, pathLst))
+         case None      => if (pathLst.isEmpty) then Some(DirTree(actorRef,optAttr)) else None
+         case Some(ref) => Some(ref.insert(actorRef, pathLst, optAttr))
      }
+     
+   def setAttributeAt(path: Uri.Path, attr: A): Unit =
+     pathMap.updateAndGet(_.map(_.replace(attr, pathToList(path))))
 
-   /** remove an actor Ref from the local DB */
+  /** remove an actor Ref from the local DB */
    def removePath(path: Uri.Path): Unit =
      pathMap.updateAndGet(_.flatMap(_.delete(pathToList(path))))
 
@@ -47,9 +52,9 @@ trait PathDB[T]:
      * @return
      *   Some(path,ref) where path is the remaining path to the actor, or None if there is none
      */
-   def getActorRef(uriPath: Uri.Path): Option[(List[String], T)] =
+   def getActorRef(uriPath: Uri.Path): Option[(List[String], R, Option[R])] =
       val path = pathToList(uriPath)
-      pathMap.getPlain.map(_.findClosest(path))
+      pathMap.getPlain.map(_.findClosestRs(path)(hasAcl))
 
 end PathDB
 
@@ -62,161 +67,28 @@ import run.cosy.ldp.Messages.*
   * Note: One could limit this to LDPC Actors only, if LDPR Actors turn out to have too short a
   * life. There may also be one LDPR Actor per request, which would not work.
   *
+  * todo: arguably, the only thing we need to store is if the container has an acl or not,
+  *    so the type {{{PathDB[ActorRef[Messages.Route], Boolean]}}} would be sufficient. Finding
+  *    the closest actor, always requires going through the path hierarchy, so that one always gets
+  *    the last container with an acl. Having the MsgAcl stored as an attributed at each node, on the
+  *    other hand means that if say a parent acl is deleted, then all the children in the Registry need
+  *    to be changed too! Whereas with a boolean, we just need to change the registry that changes.
+  *    This on the other hand would require the construction of new MsgACL object for every request
+  *    (but that is quite minor, given the size of requests)
+  *
   * @param system
   *   not used at present
   */
-class ResourceRegistry(system: ActorSystem[?]) extends PathDB[ActorRef[Messages.Route]]
+class ResourceRegistry(system: ActorSystem[?]) extends PathDB[ActorRef[Messages.Route], Boolean]
     with Extension:
-   import akka.http.scaladsl.model.Uri
+  override def hasAcl(a: Boolean): Boolean = a
+
+  import akka.http.scaladsl.model.Uri
 
 object ResourceRegistry extends ExtensionId[ResourceRegistry]:
    def createExtension(system: ActorSystem[?]): ResourceRegistry =
      new ResourceRegistry(system)
 
-/** Immutable Rose tree structure to keep path to references could perhaps use
-  * {{{
-  * type DirTree[A] = cats.free.Cofree[HashMap[String,_],A]
-  * }}}
-  * see:
-  * [[https://app.gitter.im/#/room/#typelevel_cats:gitter.im/$jOKyOT_G008b4VZxjdqvfojzyK-q4xaLykQMsg6HJ20 Feb 2021 discussion on gitter]].
-  * Especially this talk by @tpolecat
-  * [[http://tpolecat.github.io/presentations/cofree/slides#1 Fun & Games with Fix, Cofree, and Doobie!]].
-  * It is not clear though exactly what advantage the Cofree library gives one though for this
-  * project. Does the library give one ways of making changes into the structure?
-  * ([[https://www.youtube.com/watch?v=7xSfLPD6tiQ video of the talk]])
-  *
-  * To make changes the data structure one could use Lenses. I actually have a very close example
-  * where I was modelling a web server and making changes to it using Monocle.
-  * [[https://github.com/bblfish/lens-play/blob/master/src/main/scala/server/Server.scala lens-play Server.scala]]
-  * Here we only need to model the Containers so it simplifies a lot.
-  *
-  * Otherwise in order to make the transformations tail recursive one has to use a Zipper to build a
-  * Path to the changed node and then reconstruct the tree with that as explained in this
-  * [[https://stackoverflow.com/questions/17511433/scala-tree-insert-tail-recursion-with-complex-structure Stack Overflow Answer]]
-  *
-  * Would one reason to use Cofree be that one could use double tail recursion, and that could be
-  * more efficient than the Path deconstruction and data reconstruction route?
-  * [[https://stackoverflow.com/questions/55042834/how-to-make-tree-mapping-tail-recursive stack overflow answer]]
-  * One of those posts pointed out that using tail recursion slows things down by a factor of 4, and
-  * speed should be top priority here.
-  *
-  * So really we should either use a lens lib or implement it ourselves. Here we choose to reduce
-  * dependencies.
-  */
-object DirTree:
-   // a path of directory names, starting from the root going inwards
-   // todo: could one also use directly a construct from Akka actor path?
-   type Path = List[String]
 
-   /** A Path of DirTree[A]s is used to take apart a DirTree[A] structure, in the reverse direction.
-     * Note the idea is that each link (name, dt) points from dt via name in the hashMap to the next
-     * deeper node. The APath is in reverse direction so we have List( "newName" <- dir2 , "dir2in1"
-     * <- dir1 , "dir1" <- rootDir ) An empty List would just refer to the root DirTree[A]
-     */
-   type ALink[A] = (String, DirTree[A])
-   type APath[A] = List[ALink[A]]
-   // the first projection is either
-   //   -Right: the object at the end of the path
-   //   -Left: the remaining path. If it is Nil then the path is pointing into a position to which one can add
-   // the second is the A Path, so that the object can be reconsistuted
-   type SearchAPath[A] = (Either[Path, DirTree[A]], APath[A])
 
-   extension [A](dt: DirTree[A])
-      /** @param at
-        *   path to resource A
-        * @return
-        *   a pair of the remaining path and A
-        */
-      @tailrec
-      def findClosest(at: Path): (Path, A) =
-        at match
-         case Nil => (at, dt.a)
-         case name :: tail =>
-           dt.kids.get(name) match
-            case None => (at, dt.a)
-            case Some(tree) =>
-              tree.findClosest(tail) // this should be recursive!
 
-      /** note we can only find the closest path to something if the path is not empty */
-      def toClosestAPath(path: Path): SearchAPath[A] =
-         @tailrec
-         def loop(dt: DirTree[A], path: Path, result: APath[A]): SearchAPath[A] =
-           path match
-            case Nil => (Right(dt), result)
-            case name :: rest =>
-              if dt.kids.isEmpty then (Left(rest), (name, dt) :: result)
-              else
-                 dt.kids.get(name) match
-                  case None => (Left(rest), (name, dt) :: result)
-                  case Some(dtchild) =>
-                    loop(dtchild, rest, (name, dt) :: result)
-         end loop
-         loop(dt, path, Nil)
-      end toClosestAPath
-
-end DirTree
-
-/** Another option could have been
-  * {{{
-  * import cats.free.Cofree
-  *
-  * type HMap[X] = HashMap[String,X]
-  * type DirTree[A] = Cofree[HMap[_],A]
-  * }}}
-  */
-case class DirTree[A](a: A, kids: HashMap[String, DirTree[A]] = HashMap()):
-   import DirTree.*
-
-   /** Insert a new A at given path, and ignore any existing subtrees at that position. This makes
-     * sense for our main use case of ActorRef, since changing an actorRef would change all the
-     * subtree
-     */
-   final def insert(newRef: A, at: Path): DirTree[A] =
-     place(at) {
-       case (Left(Nil), (name, dt) :: apath) =>
-         (apath, new DirTree(dt.a, dt.kids + (name -> DirTree(newRef))))
-       case (Right(_), apath) => (apath, DirTree(newRef))
-       // something remains, so we can't insert. We stay where we are
-       case _ => (Nil, this)
-     }
-//       _ => new DirTree(newRef)}{(name: String,dt: DirTree[A]) => new DirTree(dt.a, dt.kids + (name -> DirTree(newRef))) } // we forget all subtrees of dt
-
-   final def place(at: Path)(buildRootDT: SearchAPath[A] => (APath[A], DirTree[A])): DirTree[A] =
-      @tailrec
-      def loop(path: APath[A], result: DirTree[A]): DirTree[A] =
-        path match
-         case Nil                 => result
-         case (name, obj) :: tail => loop(tail, DirTree(obj.a, obj.kids + (name -> result)))
-
-      // note here we loose any subtrees below the insertion.
-      val cpath: SearchAPath[A] = this.toClosestAPath(at)
-      val (p, dt)               = buildRootDT(cpath)
-      loop(p, dt)
-   end place
-
-   /** we need to replace the A at at path, but keep everything else the same. This happens when a
-     * property of the ref changes, but not the tree structure, eg. if we keep the same ActorRef but
-     * change the info about acls
-     */
-   final def replace(newRef: A, at: Path): DirTree[A] =
-     place(at) {
-       case (Left(Nil), (name, dt) :: apath) =>
-         // the object does not exist, so we'll just place this one
-         (apath, new DirTree(dt.a, dt.kids + (name -> DirTree(newRef))))
-       case (Right(o), (name, dt) :: apath) => // (apath, new DirTree(dt.a, dt.kids - name))
-         (apath, new DirTree(dt.a, dt.kids + (name -> DirTree(newRef, o.kids))))
-       // something remains, so we can't insert. We stay where we are
-       case _ => (Nil, this)
-     }
-
-   def delete(at: Path): Option[DirTree[A]] =
-     if at.isEmpty then None
-     else
-        Some(place(at) {
-          case (Left(Nil), (name, dt) :: apath) => (apath, new DirTree(dt.a, dt.kids - name))
-          case (Right(o), (name, dt) :: apath)  => (apath, new DirTree(dt.a, dt.kids - name))
-          // something remains, so we can't insert. We stay where we are
-          case _ => (Nil, this)
-        })
-
-end DirTree

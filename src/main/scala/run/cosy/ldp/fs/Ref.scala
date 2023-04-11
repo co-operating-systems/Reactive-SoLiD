@@ -19,5 +19,5 @@ case class CRef(att: DirAtt, actor: ActorRef[BasicContainer.AcceptMsg]) extends 
 /** Resource Ref */
 case class RRef(att: SymLink, actor: ActorRef[Resource.AcceptMsg]) extends Ref
 
-/** Server Managed Resource Actor Reference */
+/** Container's (server) Managed Resource Actor Reference */
 case class SMRef(att: ManagedResource, actor: ActorRef[Resource.AcceptMsg]) extends Ref

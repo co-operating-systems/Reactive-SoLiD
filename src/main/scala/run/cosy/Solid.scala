@@ -8,26 +8,27 @@ package run.cosy
 
 import _root_.akka.Done
 import _root_.akka.actor.CoordinatedShutdown
-import _root_.akka.actor.typed.scaladsl.{ActorContext, Behaviors, LoggerOps}
 import _root_.akka.actor.typed.*
+import _root_.akka.actor.typed.scaladsl.{ActorContext, Behaviors, LoggerOps}
 import _root_.akka.http.scaladsl.Http.ServerBinding
-import _root_.akka.http.scaladsl.{Http, model}
-import _root_.akka.http.scaladsl.model.Uri.Path.{Empty, Segment, Slash}
 import _root_.akka.http.scaladsl.model.*
+import _root_.akka.http.scaladsl.model.Uri.Path.{Empty, Segment, Slash}
 import _root_.akka.http.scaladsl.server.Directives.{complete, extract, extractRequestContext}
 import _root_.akka.http.scaladsl.server.{Directives, RequestContext, Route, RouteResult}
 import _root_.akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import _root_.akka.http.scaladsl.util.FastFuture
+import _root_.akka.http.scaladsl.{Http, model}
 import _root_.akka.util.Timeout
 import _root_.com.typesafe.config.{Config, ConfigFactory}
 import _root_.org.w3.banana.PointedGraph
 import _root_.run.cosy.http.auth.*
 import _root_.run.cosy.http.util.UriX.*
 import _root_.run.cosy.http.{IResponse, RDFMediaTypes, RdfParser, messages, Http as cHttp}
+import _root_.run.cosy.ldp
 import _root_.run.cosy.ldp.{ResourceRegistry, Messages as LDP}
-import _root_.scalaz.NonEmptyList
-import _root_.scalaz.NonEmptyList.nel
+import cats.data.NonEmptyList
 import cats.effect.IO
+import run.cosy.ldp.ACLInfo.*
 
 import _root_.java.io.{File, FileInputStream}
 import _root_.java.nio.file.{Files, Path}
@@ -49,11 +50,14 @@ object Solid:
         import run.cosy.ldp.fs.BasicContainer
         given system: ActorSystem[Nothing] = ctx.system
         given reg: ResourceRegistry        = ResourceRegistry(ctx.system)
-        val rootRef: ActorRef[LDP.Cmd] = ctx.spawn(BasicContainer(uri.withoutSlash, fpath), "solid")
-        val registry                   = ResourceRegistry(system)
-        val solid                      = new Solid(uri, fpath, registry, rootRef)
-        given timeout: Scheduler       = system.scheduler
-        given ec: ExecutionContext     = ctx.executionContext
+        val rootRef: ActorRef[LDP.Cmd] = ctx.spawn(
+          BasicContainer(uri.withoutSlash, fpath, NotKnown),
+          "solid"
+        )
+        val registry               = ResourceRegistry(system)
+        val solid                  = new Solid(uri, fpath, registry, rootRef)
+        given timeout: Scheduler   = system.scheduler
+        given ec: ExecutionContext = ctx.executionContext
 
         val ps  = ParserSettings.forServer(system).withCustomMediaTypes(RDFMediaTypes.all*)
         val ss1 = ServerSettings(system)
@@ -235,14 +239,24 @@ class Solid(
       val path = reqc.request.uri.path
       import reqc.given
       reqc.log.info("routing req " + reqc.request.uri)
-      val (remaining: Seq[String], actor: ActorRef[LDP.Route]) = registry.getActorRef(path)
-        .getOrElse((List[String](), rootRef))
+      // todo use the acl info
+      val (remaining: List[String], actor: ActorRef[LDP.Route], containerDir: MsgACL) =
+        registry.getActorRef(path).map {
+          (p: List[String], ref: ActorRef[LDP.Route], optAclRef: Option[ActorRef[LDP.Route]]) =>
+            (p, ref,
+              optAclRef match
+               case Some(aclRef) => ParentAcl(aclRef, true)
+               case None         => NotKnown
+            )
+        }.getOrElse((List[String](), rootRef, NotKnown))
+
       reqc.log.info(s"($remaining, $actor) = registry.getActorRef($path)")
 
       def routeWith(replyTo: ActorRef[HttpResponse]): LDP.Route = LDP.RouteMsg(
-        NonEmptyList.fromSeq("/", remaining.toSeq),
-        LDP.CmdMessage(SolidCmd.plain(reqc.request), agent, replyTo)
-      ).nextRoute
+        NonEmptyList("/", remaining),
+        LDP.CmdMessage(SolidCmd.plain(reqc.request), agent, replyTo),
+        containerDir
+      ).nextRoute(NotKnown)
 
       actor.ask[HttpResponse](routeWith).map(RouteResult.Complete(_))
 

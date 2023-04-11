@@ -7,24 +7,26 @@
 package run.cosy.ldp
 
 import akka.actor.typed.ActorRef
+import akka.http.scaladsl.model.*
 import akka.http.scaladsl.model.StatusCodes.*
 import akka.http.scaladsl.model.headers.*
-import akka.http.scaladsl.model.*
 import akka.stream.Materializer
+import cats.data.NonEmptyList
 import run.cosy.http.auth.Agent
-import run.cosy.ldp.SolidCmd
+import run.cosy.ldp.ACLInfo.*
 import run.cosy.ldp.SolidCmd.{Get, Meta, Plain, ReqDataSet, Response, Script, Wait}
-import scalaz.{ICons, INil, NonEmptyList}
-import scalaz.NonEmptyList.nel
-import run.cosy.ldp.ResourceRegistry
+import run.cosy.ldp.fs.BasicContainer
+import run.cosy.ldp.{ResourceRegistry, SolidCmd}
 
 import java.nio.file.Path
 import scala.concurrent.ExecutionContext
 import scala.util.Failure
 
 object Messages:
-   sealed trait Cmd
+   type MsgPath = List[String] // message path
+   type ActorRT = ActorRef[Messages.Route]
 
+   sealed trait Cmd
    // trait for a Cmd that is to be acted upon
    sealed trait Act extends Cmd:
       def msg: CmdMessage[?]
@@ -33,16 +35,19 @@ object Messages:
    sealed trait Info extends Cmd
 
    // todo: ask for the whole URL not just the path, so that we can also be guided to proxy actor.
+   /** This will send it to the closest actor known in the registry */
    private def send[A](msg: CmdMessage[A], uriPath: Uri.Path)(using
        reg: ResourceRegistry
    ): Option[Unit] =
-     reg.getActorRef(uriPath).map { (remaining, sendTo: ActorRef[Messages.Route]) =>
-       sendTo ! {
-         remaining match
-          case Nil          => WannaDo(msg)
-          case head :: tail => RouteMsg(NonEmptyList.fromSeq(head, tail), msg)
+     reg.getActorRef(uriPath)
+       .map { (remaining: MsgPath, sendTo: ActorRT, defltAcl: Option[ActorRT]) =>
+         sendTo ! {
+           val acl: MsgACL = if defltAcl.isDefined then ParentAcl(defltAcl.get, true) else NotKnown
+           remaining match
+            case Nil          => WannaDo(msg, acl)
+            case head :: tail => RouteMsg(NonEmptyList(head, tail), msg, acl)
+         }
        }
-     }
 
    /** CmdMessage wraps an LDPCmd that is part of a Free Monad Stack. Ie. the `command` is the
      * result of an LDPCmd.Script[T].resume todo: use
@@ -140,20 +145,32 @@ object Messages:
    final case class RouteMsg(
        remainingPath: NonEmptyList[String],
        msg: CmdMessage[?],
-       lastSeenContainerACL: Option[ActorRef[RouteMsg]] = None
+       lastSeenContainerACL: MsgACL
    ) extends Route:
       def nextSegment: String = remainingPath.head
 
       // check that path is not empty before calling  (anti-pattern)
-      def nextRoute: Route = remainingPath match
-       case NonEmptyList(_, INil())         => WannaDo(msg)
-       case NonEmptyList(_, ICons(h, tail)) => RouteMsg(nel(h, tail), msg)
+      /** @param localAclInfo
+        *   this is the aclInfo for the message given the information known by the caller
+        */
+      def nextRoute(localAclInfo: MsgACL): Route =
+        remainingPath match
+         case NonEmptyList(_, Nil) => WannaDo(msg, localAclInfo)
+         case NonEmptyList(_, h :: tail) =>
+           RouteMsg(NonEmptyList(h, tail), msg, localAclInfo)
 
    /** a command to be executed on the resource on which it arrives, after being authorized */
    final case class Do(msg: CmdMessage[?]) extends Act with Route
 
-   /** message has arrived, but still needs to be authorized */
-   final case class WannaDo(msg: CmdMessage[?]) extends Route:
+   /** message has arrived, but still needs to be authorized.
+     * Note: a Wannado can come directly from a request to the registry. see `def send` in Messages
+     * The lastSeenContainerACL should be used for authorization rules
+     * if final resource does not have its own existing acl.
+     * */
+   final case class WannaDo(
+       msg: CmdMessage[?],
+       lastSeenContainerACL: MsgACL
+   ) extends Route:
       def toDo = Do(msg)
 
    // responses from child to parent

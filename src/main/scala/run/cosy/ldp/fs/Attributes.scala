@@ -6,8 +6,8 @@
 
 package run.cosy.ldp.fs
 
-import java.nio.file.{Files, Path}
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{Files, Path}
 import java.time.Instant
 import scala.util.Try
 
@@ -43,19 +43,20 @@ object Attributes:
       import java.nio.file.LinkOption.NOFOLLOW_LINKS
       import java.nio.file.attribute.BasicFileAttributes
       Try {
-        if path.getFileName.toString.contains('.') then
+        if path.getFileName.toString.startsWith(".") then
            DefaultMR(path)
         else
            val att = Files.readAttributes(path, classOf[BasicFileAttributes], NOFOLLOW_LINKS)
            Attributes(path, att)
       }
 
-   /** Return the path but only if an actor can be built from it. Todo: The Try may not be woth
+   /** Return the path but only if an actor can be built from it. Todo: The Try may not be worth
      * keeping here, as we don't pass on info if the type was wrong.
      */
-   def actorPath(path: Path): Try[ActorPath] = forPath(path).collect {
-     case a: ActorPath => a
-   }
+   def actorPath(path: Path): Try[ActorPath] =
+     forPath(path).collect {
+       case a: ActorPath => a
+     }
 
    def apply(
        fileName: Path,
@@ -64,7 +65,7 @@ object Attributes:
    ): APath =
      if att.isDirectory then DirAtt(fileName, att, collectedAt)
      else if att.isSymbolicLink then
-        if fileName.getFileName.toString.contains('.') then
+        if fileName.getFileName.toString.startsWith(".") then
            // todo: we want a lot more checks here - there should only be a limited list of such resources
            ManagedR(fileName, att, collectedAt)
         else
@@ -160,7 +161,7 @@ object Attributes:
        mrpath: Path
    ) extends ManagedResource, APath(mrpath), ActorPath
 
-   /** Managed Resource with representation on disk */
+   /** Container Managed Resource with representation on disk */
    case class ManagedR private[Attributes] (
        mpath: Path,
        att: BasicFileAttributes,

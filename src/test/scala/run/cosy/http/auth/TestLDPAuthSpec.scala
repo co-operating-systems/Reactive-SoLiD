@@ -9,14 +9,7 @@ package run.cosy.http.auth
 import akka.actor.testkit.typed.scaladsl.{ActorTestKit, TestProbe}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior, Scheduler}
 import akka.http.javadsl.model.headers.HttpCredentials
-import akka.http.scaladsl.model.headers.{
-  Accept,
-  Authorization,
-  GenericHttpCredentials,
-  HttpChallenge,
-  Location,
-  `WWW-Authenticate`
-}
+import akka.http.scaladsl.model.headers.{Accept, Authorization, GenericHttpCredentials, HttpChallenge, Location, `WWW-Authenticate`}
 import akka.http.scaladsl.model.*
 import akka.http.scaladsl.server.AuthenticationFailedRejection
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsRejected
@@ -39,6 +32,7 @@ import run.cosy.ldp.testUtils.TmpDir.{createDir, deleteDir}
 import run.cosy.http.RDFMediaTypes.*
 import run.cosy.http.RdfParser.{rdfRequest, rdfUnmarshaller}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
+import run.cosy.ldp.ACLInfo.*
 
 class TestSolidLDPAuthSpec extends AnyWordSpec with Matchers with ScalatestRouteTest:
 
@@ -68,7 +62,7 @@ class TestSolidLDPAuthSpec extends AnyWordSpec with Matchers with ScalatestRoute
 
    def withServer(test: Solid => Any): Unit =
       val testKit                                      = ActorTestKit()
-      val rootCntr: Behavior[BasicContainer.AcceptMsg] = BasicContainer(rootUri, dirPath)
+      val rootCntr: Behavior[BasicContainer.AcceptMsg] = BasicContainer(rootUri, dirPath, NotKnown)
       val rootActr: ActorRef[BasicContainer.AcceptMsg] = testKit.spawn(rootCntr, "solid")
       val solid = new Solid(rootUri, dirPath, registry, rootActr)
       try
@@ -87,7 +81,7 @@ class TestSolidLDPAuthSpec extends AnyWordSpec with Matchers with ScalatestRoute
           }
 
       def newContainer(baseDir: Uri, slug: Slug): Uri =
-        Req.Post(baseDir).withHeaders(slug, BasicContainer.LinkHeaders) ~>
+        Req.Post(baseDir).withHeaders(slug, BasicContainer.LDPLinkHeaders) ~>
           solid.routeLdp(agent) ~> check {
             status shouldEqual StatusCodes.Created
             header[Location].get.uri
