@@ -5,8 +5,8 @@ import sbt.{CrossVersion, Def, *}
 object Dependencies {
 
   object Versions {
-    val Akka               = "2.6.20"
-    val AkkaHttp           = "10.2.10"
+    val Akka               = "2.8.0"
+    val AkkaHttp           = "10.5.1"
     val scalaz             = "7.4.0-M7"
     val banana             = "0.8.6"
     val alpakka            = "4.0.0"

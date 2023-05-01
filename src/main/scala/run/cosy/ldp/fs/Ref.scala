@@ -7,7 +7,7 @@
 package run.cosy.ldp.fs
 
 import akka.actor.typed.ActorRef
-import run.cosy.ldp.fs.Attributes.{DirAtt, SymLink, ManagedResource}
+import run.cosy.ldp.fs.Attributes.{DirAtt, ManagedR, ManagedResource, SymLink}
 
 sealed trait Ref
 
@@ -20,4 +20,4 @@ case class CRef(att: DirAtt, actor: ActorRef[BasicContainer.AcceptMsg]) extends 
 case class RRef(att: SymLink, actor: ActorRef[Resource.AcceptMsg]) extends Ref
 
 /** Container's (server) Managed Resource Actor Reference */
-case class SMRef(att: ManagedResource, actor: ActorRef[Resource.AcceptMsg]) extends Ref
+case class SMRef(att: ManagedR, actor: ActorRef[Resource.AcceptMsg]) extends Ref

@@ -1,24 +1,31 @@
+/*
+ * Copyright 2021 Henry Story
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package run.cosy.ldp.fs
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.http.scaladsl.model.*
 import akka.http.scaladsl.model.ContentTypes.{`text/html(UTF-8)`, `text/plain(UTF-8)`}
 import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
 import akka.http.scaladsl.model.MediaTypes.`text/x-java-source`
 import akka.http.scaladsl.model.StatusCodes.{Gone, InternalServerError, MethodNotAllowed, NoContent}
 import akka.http.scaladsl.model.headers.*
-import akka.http.scaladsl.model.*
 import akka.stream.IOResult
 import akka.stream.scaladsl.FileIO
+import run.cosy.ldp.{ACInfo, SolidPostOffice}
+import run.cosy.ldp.ACInfo.ACContainer
 import run.cosy.ldp.Messages.*
-import run.cosy.ldp.fs.BasicContainer.PostCreation
+import run.cosy.ldp.fs.BasicContainer.{PostCreation, aclLinks}
 import run.cosy.ldp.fs.Resource.{AcceptMsg, StateSaved, extension, headersFor}
 
-import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
-import scala.concurrent.Future
-import scala.util.{Failure, Success}
 import java.nio.file.{CopyOption, Files, Path as FPath}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 /** LDPR Actor extended with Access Control. The LDPR Actor should keep track of states for a
   * resource, such as previous versions, and variants (e.g. human translations, or just different
@@ -29,36 +36,42 @@ import java.nio.file.{CopyOption, Files, Path as FPath}
   *   - PUT for changes
   *   - PATCH and QUERY potentially
   *
-  * An LDPR actor should garbage collect after inactive time, to reduce memory useage.
+  * An LDPR actor should garbage collect after inactive time, to reduce memory usage.
   *
   * This implementation makes a number of arbitrary decisions.
   *   1. Resources are symlinks pointing to default representations 2. ...
+  *
+  * todo: do we really next to pass context?
   */
 trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg]):
+   import Resource.{LDPR, mediaType}
    import context.log
    import run.cosy.http.auth.Agent
    import run.cosy.ldp.SolidCmd
    import run.cosy.ldp.SolidCmd.ReqDataSet
-   import Resource.{LDPR, mediaType}
+
+   given po: SolidPostOffice = SolidPostOffice(context.system)
 
    val linkName = linkPath.getFileName.toString
    // todo. replace with DotFileName
    final lazy val dotLinkName: Dot = Dot(linkName)
    // we have only one level of acls.
-   def aclName = if dotLinkName.isACR then linkName else linkName + ".acl"
+   def aclName: String = if dotLinkName.isACR then linkName else linkName + ".acl"
    import run.cosy.http.util.UriX.sibling
-   val aclUri  = uri.sibling(aclName)
-   def AclLink = LinkValue(aclUri, LinkParams.rel("acl"))
+   val aclUri = uri.sibling(aclName)
 
    var aclActorDB: Option[ActorRef[AcceptMsg]] = None
-   def aclActor: ActorRef[AcceptMsg] = aclActorDB.getOrElse {
-     val acn = aclName
-     aclActorDB = Some(context.spawn(ACResource(aclUri, linkPath.resolveSibling(acn), acn), acn))
-     aclActorDB.get
-   }
+
+   def aclActor(create: Boolean): Option[ActorRef[AcceptMsg]] =
+      if aclActorDB.isEmpty && create then
+         val acn = aclName
+         aclActorDB =
+           Some(context.spawn(ACResource(aclUri, linkPath.resolveSibling(acn), acn), acn))
+      aclActorDB
+
    given ac: ActorContext[ScriptMsg[?] | Do] = context.asInstanceOf[ActorContext[ScriptMsg[?] | Do]]
 
-   def behavior: Behaviors.Receive[AcceptMsg] =
+   def behavior(acinfo: ACInfo): Behaviors.Receive[AcceptMsg] =
      try
         import scala.util
         import scala.util.Try
@@ -70,12 +83,12 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 
         val linkToFileName = linkTo.getFileName.toString
         archivedBehavior(linkToFileName).orElse {
-          linkedToFileDoesNotExist(linkToFileName)
+          linkedToFileDoesNotExist(linkToFileName, acinfo)
         }.orElse {
           Try {
             linkToFileName match
              case dotLinkName.File(version, extension) =>
-               VersionsInfo(version, linkTo).NormalBehavior
+               VersionsInfo(version, linkTo, acinfo).NormalBehavior
              case _ =>
                fileSystemProblemBehavior(new Exception("Storage problem with " + linkToFileName))
           }.toOption
@@ -104,7 +117,10 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 
    // if we have a symbolic link that is linking to `linkTo`
    @throws[SecurityException]
-   def linkedToFileDoesNotExist(linkTo: String): Option[Behaviors.Receive[AcceptMsg]]
+   def linkedToFileDoesNotExist(
+       linkTo: String,
+       defaultAC: ACInfo
+   ): Option[Behaviors.Receive[AcceptMsg]]
 
    // todo: This behavior is not fined grained enough. What if there is
    def fileSystemProblemBehavior(e: Exception): Behaviors.Receive[AcceptMsg] =
@@ -165,7 +181,8 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
            s"""received POST request with headers ${req.headers} and CT=${req.entity.contentType}
               |Saving to: $linkToPath""".stripMargin
          )
-         val f: Future[IOResult] = req.entity.dataBytes.runWith(FileIO.toPath(linkToPath))
+         given sys: ActorSystem[Nothing] = context.system
+         val f: Future[IOResult]         = req.entity.dataBytes.runWith(FileIO.toPath(linkToPath))
          context.pipeToSelf(f) {
            case Success(IOResult(count, _)) => StateSaved(linkToPath, cmd)
            case Failure(e) =>
@@ -256,9 +273,30 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
      * @param ct:
      *   content type of all the default versions -- very limiting to start off with.
      */
-   def VersionsInfo(lastVersion: Int, linkTo: FPath): VersionsInfo
+   def VersionsInfo(lastVersion: Int, linkTo: FPath, defaultAC: ACInfo): VersionsInfo
 
-   trait VersionsInfo(lastVersion: Int, linkTo: FPath):
+   /** Note: We don't need to keep the default ACL info as that comes with the message Note: We need
+     * to know to keep info on the effective ACL to return the correct default link. That cannot be
+     * done by just using the info in the message because we have SolidCmd messages that we can
+     * parse and not just Routes, which come with the default container.
+     *
+     * @param aclActor
+     *   the actor for the acl if it exists
+     * @param the
+     *   last version of the file (so that we can send a pointer back
+     * @param linkTo
+     *   the linked file (with the content)
+     * @param aclActor
+     *   the actor for the acl for his resource if it exists
+     * @param aclInfo
+     *   we keep default actor info here either the default in which case it is a ACContainer or the
+     *   local one an ACRef
+     */
+   trait VersionsInfo(
+       lastVersion: Int,
+       linkTo: FPath,
+       aclInfo: ACInfo
+   ):
       import Resource.{AllowHeader, eTag, lastModified}
       import akka.http.scaladsl.model.HttpMethods.*
       import akka.http.scaladsl.model.StatusCodes.{Created, Gone, InternalServerError}
@@ -300,13 +338,23 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                import script.given
                script.continue
                Behaviors.same
-             case WannaDo(cmdmsg @ CmdMessage(commands, from, replyTo), containerAcl) =>
+             case WannaDo(cmdmsg: CmdMessage[?], containerAcl) =>
                // we route the message to the acl actor
                // todo: consider wether it is still needed to do this.
                import run.cosy.http.util.UriX.fileName
+               import ACInfo.*
                if (!dotLinkName.isACR) && dotLinkName.hasACR(cmdmsg.target.fileName.get) then
-                  aclActor ! msg
-               else // we are an ACL Actor
+                  // we are not an ACR and the message is going to our ACR, then forward it
+                  // todo: the first !dotLinkName.isACR requirement would not exist if this code were not shared.
+                  //  should it be shared?
+                  aclInfo match
+                   case ACtrlRef(_, actorRef) => actorRef ! msg
+                   case _                     =>
+                     // todo: we have to check if the message is one to create the ACR. If it is
+                     //  (and if it is allowed?) then we need to create the actor, and the resource
+                     //  and forward the msg and change the behavior
+                     cmdmsg.respondWith(HttpResponse(StatusCodes.NotFound))
+               else
                   Guard.Authorize(cmdmsg, containerAcl, aclUri)
                Behaviors.same
              case Do(cmdmsg @ CmdMessage(cmd, agent, replyTo)) =>
@@ -346,6 +394,8 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                   // 2. if not, build it from result of plain HTTP request
                   import _root_.run.cosy.RDF.{*, given}
                   import cats.free.Free
+                  given sys: ActorSystem[Nothing] = context.system
+                  given ec: ExecutionContext      = context.executionContext
                   // todo: we should not have to call resume here as we set everything up for plain
                   SolidCmd.getFromPlain(url, k).resume match
                    case Left(plain) =>
@@ -371,7 +421,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                cmd.respondWith(HttpResponse(
                  StatusCodes.InternalServerError,
                  Location(uri) :: AllowHeader :: Link(
-                   AclLink :: LDPR(uri) :: VersionLinks(lastVersion)
+                   LDPR(Some(uri)) :: (aclLinks(aclUri, aclInfo) ::: VersionLinks(lastVersion))
                  ) :: headersFor(att),
                  entity = HttpEntity("PUT unsucessful")
                ))
@@ -388,11 +438,11 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                cmd.respondWith(HttpResponse(
                  OK,
                  Location(uri) :: AllowHeader :: Link(
-                   AclLink :: LDPR(uri) :: VersionLinks(lastVersion + 1)
+                   LDPR(Some(uri)) :: (aclLinks(aclUri, aclInfo) ::: VersionLinks(lastVersion + 1))
                  ) :: headersFor(att),
                  HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
                ))
-               VersionsInfo(lastVersion + 1, fpath).NormalBehavior
+               VersionsInfo(lastVersion + 1, fpath, aclInfo).NormalBehavior
          }
       end NormalBehavior
 
@@ -439,7 +489,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
             cmd.respondWith(HttpResponse(
               StatusCodes.PreconditionRequired,
               Location(uri) :: AllowHeader :: Link(
-                AclLink :: LDPR(uri) :: VersionLinks(lastVersion)
+                LDPR() :: { aclLinks(aclUri, aclInfo) ::: VersionLinks(lastVersion) }
               ) :: headersFor(att),
               HttpEntity(
                 "LDP Servers requires valid `If-Match` or `If-Unmodified-Since` headers for a PUT"
@@ -459,7 +509,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
             cmd.respondWith(HttpResponse(
               StatusCodes.PreconditionFailed,
               Location(uri) :: AllowHeader :: Link(
-                AclLink :: LDPR(uri) :: VersionLinks(lastVersion)
+                LDPR() :: { aclLinks(aclUri, aclInfo) ::: VersionLinks(lastVersion) }
               ) :: headersFor(att),
               HttpEntity(
                 "LDP Servers requires valid `If-Match` or `If-Unmodified-Since` headers for a PUT"
@@ -496,7 +546,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
             HttpResponse(
               StatusCodes.OK,
               lastModified(attr) :: eTag(attr) :: AllowHeader :: Link(
-                AclLink :: LDPR(uri) :: VersionLinks(ver)
+                LDPR() :: { aclLinks(aclUri, aclInfo) ::: VersionLinks(ver) }
               ) :: Nil,
               HttpEntity.Default(
                 akka.http.scaladsl.model.ContentType(mt, () => HttpCharsets.`UTF-8`),

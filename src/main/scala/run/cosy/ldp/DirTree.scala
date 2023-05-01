@@ -1,3 +1,9 @@
+/*
+ * Copyright 2021 Henry Story
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package run.cosy.ldp
 
 import scala.annotation.tailrec
@@ -64,34 +70,34 @@ object DirTree:
          case Nil => (at, thizDT.ref, thizDT.attr)
          case name :: tail =>
            thizDT.kids.get(name) match
-            case None => (at, thizDT.ref, thizDT.attr)
+            case None       => (at, thizDT.ref, thizDT.attr)
             case Some(tree) => tree.findClosest(tail)
       end findClosest
 
-      /**
-        * This function is very specific to our needs. It is easier to add it to this lib for
-        * testing, but it should perhaps be in the ResourceRegistry class.
-        * The first R is the ActorRef we are looking for, the second R is the Actor that has an acl.
-        * It should always exist.
+      /** This function is very specific to our needs. It is easier to add it to this lib for
+        * testing, but it should perhaps be in the ResourceRegistry class. The first R is the
+        * ActorRef we are looking for, the second R is the Actor that has an acl. It should always
+        * exist.
         *
         * Find the first known R following path, and from there follow up the tree to find the next
         * closest R that satisifies prop.
-        * @return a triple of remaining path, the closest R on path, and from there back up the
-        *         closest R that satisfies prop
+        * @return
+        *   a triple of remaining path, the closest R on path, and from there back up the closest R
+        *   that satisfies prop
         */
       def findClosestRs(path: Path)(prop: A => Boolean): (Path, R, Option[R]) =
-        val res: SearchAPath[R, A] = thizDT.toClosestAPath(path)
-        def find(p: APath[R,A]): Option[R] = p.collectFirst{
-          case (_, dt) if prop(dt.attr) => dt.ref
-        }
-        res match
-          case (Right(o), pathToRoot) => (List(), o.ref, find(("",o):: pathToRoot))
+         val res: SearchAPath[R, A] = thizDT.toClosestAPath(path)
+         def find(p: APath[R, A]): Option[R] = p.collectFirst {
+           case (_, dt) if prop(dt.attr) => dt.ref
+         }
+         res match
+          case (Right(o), pathToRoot) => (List(), o.ref, find(("", o) :: pathToRoot))
           case (Left(remainingPath), Nil) =>
-            (remainingPath, thizDT.ref, find(List(""->thizDT)))
-          case (Left(remainingPath), head::tail) =>
-            (head._1::remainingPath, head._2.ref, find(head::tail))
+            (remainingPath, thizDT.ref, find(List("" -> thizDT)))
+          case (Left(remainingPath), head :: tail) =>
+            (head._1 :: remainingPath, head._2.ref, find(head :: tail))
       end findClosestRs
-      
+
       /** note we can only find the closest path to something if the path is not empty */
       def toClosestAPath(path: Path): SearchAPath[R, A] =
          @tailrec

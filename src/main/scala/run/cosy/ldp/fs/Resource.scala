@@ -27,9 +27,10 @@ import run.cosy.http.RDFMediaTypes.*
 import run.cosy.http.auth.{KeyIdAgent, WebServerAgent}
 import run.cosy.http.util.UriX.*
 import run.cosy.http.{FileExtensions, RDFMediaTypes, RdfParser}
+import run.cosy.ldp.ACInfo
 import run.cosy.ldp.Messages.*
 import run.cosy.ldp.SolidCmd.Plain
-import run.cosy.ldp.fs.BasicContainer.{LDPLinkHeaders, PostCreation}
+import run.cosy.ldp.fs.BasicContainer.{LDPLinkHeaders, PostCreation, aclLinks}
 import run.cosy.ldp.fs.Resource.{StateSaved, connegNamesFor, extension, headersFor}
 import run.cosy.ldp.{ResourceRegistry, fs}
 
@@ -53,13 +54,13 @@ object Resource:
 
    type AcceptMsg = ScriptMsg[?] | Do | WannaDo | PostCreation | StateSaved
 
-   def apply(rUri: Uri, linkName: FPath, name: String): Behavior[AcceptMsg] =
+   def apply(rUri: Uri, linkName: FPath, name: String, defaultACL: ACInfo): Behavior[AcceptMsg] =
      Behaviors.setup[AcceptMsg] { (context: ActorContext[AcceptMsg]) =>
        // val exists = Files.exists(root)
        //			val registry = ResourceRegistry(context.system)
        //			registry.addActorRef(rUri.path, context.self)
        //			context.log.info("started LDPR actor at " + rUri.path)
-       new Resource(rUri, linkName, context).behavior
+       new Resource(rUri, linkName, context).behavior(defaultACL)
      }
    // guard could be a pool?
    // var guard: ActorRef = _
@@ -94,8 +95,12 @@ object Resource:
       import akka.http.scaladsl.model.headers.`Last-Modified`
       `Last-Modified`(DateTime(att.lastModifiedTime().toMillis))
 
-   def LDPR(uri: Uri): LinkValue =
-     LinkValue(run.cosy.ldp.fs.BasicContainer.ldpr, LinkParams.rel("type"), LinkParams.anchor(uri))
+   /** Return the link stating that the subject is a an LDPR. If None, then the subject is the
+     * resource that returns the resource.
+     */
+   def LDPR(subject: Option[Uri] = None): LinkValue =
+     LinkValue(run.cosy.ldp.fs.BasicContainer.ldpr,
+       LinkParams.rel("type") :: subject.toList.map(LinkParams.anchor))
 
    /** todo: language versions, etc...
      */
@@ -152,60 +157,71 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
 
    // if we have a symbolic link that is linking to `linkTo`
    @throws[SecurityException]
-   override def linkedToFileDoesNotExist(linkTo: String): Option[Behaviors.Receive[AcceptMsg]] =
-     if !Files.exists(linkPath.resolveSibling(linkTo)) then Some(justCreatedBehavior)
+   override def linkedToFileDoesNotExist(
+       linkTo: String,
+       acinfo: ACInfo
+   ): Option[Behaviors.Receive[AcceptMsg]] =
+     if !Files.exists(linkPath.resolveSibling(linkTo)) then Some(justCreatedBehavior(acinfo))
      else None
 
-   def VersionsInfo(lastVersion: Int, linkTo: FPath): VersionsInfo =
-     new VersionsInfo(lastVersion, linkTo) {}
+   def VersionsInfo(lastVersion: Int, linkTo: FPath, defaultAC: ACInfo): VersionsInfo =
+      val aclLinkExists: Boolean = Files.exists(linkPath.resolveSibling(aclName))
+      import ACInfo.*
+      val acAct: ACInfo = aclActor(aclLinkExists) match
+       case None        => defaultAC
+       case Some(acRef) => ACtrlRef(aclUri, acRef)
+      new VersionsInfo(lastVersion, linkTo, acAct) {}
 
    /** An LDPR created with POST is only finished when the content has downloaded (and potentially
      * been verified)
      */
-   def justCreatedBehavior = Behaviors.receiveMessage[AcceptMsg] { (msg: AcceptMsg) =>
-     msg match
-      case cr: PostCreation =>
-        BuildContent(cr)
-        Behaviors.same
-      case StateSaved(null, cmd) =>
-        // ACR: what happens if the ACL creation fails?! (That makes the resource innaccessible....)
-        // If we can't save the body of a POST then the POST fails
-        // note: DELETE can make sense in so far as the default behavior is just to return the imports of parent acl.
-        // todo: the parent should also be notified... (which it will with stopped below, but enough?)
-        Files.delete(linkPath)
-        // is there a more specific error to be had?
-        cmd.respondWith(HttpResponse(
-          StatusCodes.InternalServerError,
-          entity = HttpEntity("upload unsucessful")
-        ))
-        Behaviors.stopped
-      case StateSaved(pos, cmd) =>
-        // todo: we may only want to check that the symlinks are correct
-        import Resource.*
+   def justCreatedBehavior(acInfo: ACInfo) =
+     Behaviors.receiveMessage[AcceptMsg] { (msg: AcceptMsg) =>
+       msg match
+        case cr: PostCreation =>
+          BuildContent(cr)
+          Behaviors.same
+        case StateSaved(null, cmd) =>
+          // ACR: what happens if the ACL creation fails?! (That makes the resource innaccessible....)
+          // If we can't save the body of a POST then the POST fails
+          // note: DELETE can make sense in so far as the default behavior is just to return the imports of parent acl.
+          // todo: the parent should also be notified... (which it will with stopped below, but enough?)
+          Files.delete(linkPath)
+          // is there a more specific error to be had?
+          cmd.respondWith(HttpResponse(
+            StatusCodes.InternalServerError,
+            entity = HttpEntity("upload unsucessful")
+          ))
+          Behaviors.stopped
+        case StateSaved(pos, cmd) =>
+          // todo: we may only want to check that the symlinks are correct
+          import Resource.*
 
-        import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-        val tmpSymLinkPath = Files.createSymbolicLink(
-          linkPath.resolveSibling(pos.getFileName.toString + ".tmp"),
-          pos.getFileName
-        )
-        Files.move(tmpSymLinkPath, linkPath, ATOMIC_MOVE)
-        val att = Files.readAttributes(pos, classOf[BasicFileAttributes])
-        cmd.respondWith(HttpResponse(
-          Created,
-          Location(uri) :: Link(AclLink :: LDPR(uri) :: Nil) :: AllowHeader :: headersFor(att),
-          HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
-        ))
-        behavior
-      case route: Route =>
-        // todo: here we could change the behavior to one where requests are stashed until the upload
-        // is finished, or where they are returned with a "please wait" response...
-        route.msg.respondWith(HttpResponse(
-          Conflict,
-          entity = HttpEntity("the resource is not yet completely uploaded. Try again later.")
-        ))
-        Behaviors.same
-      case script: ScriptMsg[?] =>
-        import script.given
-        script.continue
-        Behaviors.same
-   }
+          import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+          val tmpSymLinkPath = Files.createSymbolicLink(
+            linkPath.resolveSibling(pos.getFileName.toString + ".tmp"),
+            pos.getFileName
+          )
+          Files.move(tmpSymLinkPath, linkPath, ATOMIC_MOVE)
+          val att = Files.readAttributes(pos, classOf[BasicFileAttributes])
+          cmd.respondWith(HttpResponse(
+            Created,
+            Location(uri) :: Link(
+              LDPR(Some(uri)) :: aclLinks(aclUri, acInfo)
+            ) :: AllowHeader :: headersFor(att),
+            HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
+          ))
+          behavior(acInfo)
+        case route: Route =>
+          // todo: here we could change the behavior to one where requests are stashed until the upload
+          // is finished, or where they are returned with a "please wait" response...
+          route.msg.respondWith(HttpResponse(
+            Conflict,
+            entity = HttpEntity("the resource is not yet completely uploaded. Try again later.")
+          ))
+          Behaviors.same
+        case script: ScriptMsg[?] =>
+          import script.given
+          script.continue
+          Behaviors.same
+     }

@@ -6,6 +6,8 @@
 
 package run.cosy.ldp.fs
 
+import run.cosy.ldp.fs.Attributes.ManagedR
+
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import java.time.Instant
@@ -38,42 +40,46 @@ object Attributes:
    import java.nio.file.Paths
    import java.nio.file.attribute.FileTime
 
-   /** Fails with the exceptions from Files.readAttributes() */
+   /** Builds the Attributes from the information on the files system Fails with the exceptions from
+     * Files.readAttributes()
+     */
    def forPath(path: Path): Try[APath] =
       import java.nio.file.LinkOption.NOFOLLOW_LINKS
       import java.nio.file.attribute.BasicFileAttributes
       Try {
-        if path.getFileName.toString.startsWith(".") then
-           DefaultMR(path)
-        else
-           val att = Files.readAttributes(path, classOf[BasicFileAttributes], NOFOLLOW_LINKS)
-           Attributes(path, att)
+        val att = Files.readAttributes(path, classOf[BasicFileAttributes], NOFOLLOW_LINKS)
+        val linkTo: Option[Path] =
+          if att.isSymbolicLink then
+             Try(Files.readSymbolicLink(path)).toOption
+          else None
+        Attributes(path, att, linkTo)
       }
 
    /** Return the path but only if an actor can be built from it. Todo: The Try may not be worth
      * keeping here, as we don't pass on info if the type was wrong.
      */
    def actorPath(path: Path): Try[ActorPath] =
-     forPath(path).collect {
-       case a: ActorPath => a
-     }
+     forPath(path).collect { case a: ActorPath => a }
 
    def apply(
        fileName: Path,
        att: BasicFileAttributes,
+       linkTo: Option[Path] = None,
        collectedAt: Instant = Instant.now()
    ): APath =
-     if att.isDirectory then DirAtt(fileName, att, collectedAt)
-     else if att.isSymbolicLink then
-        if fileName.getFileName.toString.startsWith(".") then
-           // todo: we want a lot more checks here - there should only be a limited list of such resources
-           ManagedR(fileName, att, collectedAt)
-        else
-           val linkTo = Files.readSymbolicLink(fileName)
+     if att.isDirectory
+     then DirAtt(fileName, att, collectedAt)
+     else
+        linkTo match
+         case Some(linkTo) =>
            if linkTo.endsWith(".archive") then
               Archived(fileName, att, collectedAt)
-           else SymLink(fileName, linkTo, att, collectedAt)
-     else OtherAtt(fileName, att, collectedAt)
+           else if fileName.getFileName.toString == ".acl" then
+              // todo: the extensions should be specifiable in a config file
+              ManagedR(fileName, linkTo, att, collectedAt)
+           else
+              SymLink(fileName, linkTo, att, collectedAt)
+         case None => OtherAtt(fileName, att, collectedAt)
 
    def createDir(inDir: Path, dirName: String): Try[DirAtt] = Try {
      val path       = inDir.resolve(dirName)
@@ -97,6 +103,12 @@ object Attributes:
      )
    }
 
+   def createSymLink(dirPath: Path, linkName: String, linkTo: String): Try[SymLink] =
+     createLink[SymLink](dirPath, linkName, linkTo)(SymLink.apply)
+
+   def createServerManaged(dirPath: Path, linkName: String, linkTo: String): Try[ManagedR] =
+     createLink[ManagedR](dirPath, linkName, linkTo)(ManagedR.apply)
+
    /** Create a Symbolic Link
      *
      * @param dirPath
@@ -108,34 +120,33 @@ object Attributes:
      * @return
      *   The full path to the symbolic link relative to the base where the JVM is running
      */
-   def createLink(dirPath: Path, linkName: String, linkTo: String): Try[SymLink] = Try {
+   private def createLink[R](dirPath: Path, linkName: String, linkTo: String)(
+       app: (Path, Path, BasicFileAttributes, Instant) => R
+   ): Try[R] = Try {
      import java.nio.file.Paths
      import java.nio.file.attribute.FileTime
-     val path     = dirPath.resolve(linkName)
-     val linkPath = Files.createSymbolicLink(path, Paths.get(linkTo))
-     val now      = Instant.now()
-     val ftNow    = FileTime.from(now)
-     // avoid checking the file system again, create the obvious answer
-     SymLink(
-       linkPath,
-       Paths.get(linkTo),
-       new BasicFileAttributes:
-          import java.nio.file.attribute.FileTime
-          override def lastModifiedTime(): FileTime = ftNow
-          override def lastAccessTime(): FileTime   = ftNow
-          override def creationTime(): FileTime     = ftNow
-          override def isRegularFile: Boolean       = false
-          override def isDirectory: Boolean         = false
-          override def isSymbolicLink: Boolean      = true
-          override def isOther: Boolean             = false
-          override def size(): Long                 = 0
-          override def fileKey(): AnyRef            = null
-       ,
-       now
-     )
+     // todo: verify that LinkTo is valid
+     val path            = dirPath.resolve(linkName)
+     val linkToPath      = Path.of(linkTo)
+     val linkPath: Path  = Files.createSymbolicLink(path, linkToPath)
+     val now: Instant    = Instant.now()
+     val ftNow: FileTime = FileTime.from(now)
+     val att = new BasicFileAttributes:
+        import java.nio.file.attribute.FileTime
+        override def lastModifiedTime(): FileTime = ftNow
+        override def lastAccessTime(): FileTime   = ftNow
+        override def creationTime(): FileTime     = ftNow
+        override def isRegularFile: Boolean       = false
+        override def isDirectory: Boolean         = false
+        override def isSymbolicLink: Boolean      = true
+        override def isOther: Boolean             = false
+        override def size(): Long                 = 0
+        override def fileKey(): AnyRef            = null
+
+     app(linkPath, linkToPath, att, now)
    }
 
-   // todo: may want to remove this later. Just here to help me refactor code
+// todo: may want to remove this later. Just here to help me refactor code
    sealed trait Other           extends Attributes
    sealed trait ManagedResource extends ActorPath
 
@@ -164,6 +175,7 @@ object Attributes:
    /** Container Managed Resource with representation on disk */
    case class ManagedR private[Attributes] (
        mpath: Path,
+       to: Path,
        att: BasicFileAttributes,
        collectedAt: Instant
    ) extends ManagedResource, Attributes(att, collectedAt), APath(mpath), ActorPath

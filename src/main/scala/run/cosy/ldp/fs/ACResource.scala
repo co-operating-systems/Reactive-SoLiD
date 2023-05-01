@@ -1,3 +1,9 @@
+/*
+ * Copyright 2021 Henry Story
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package run.cosy.ldp.fs
 
 import akka.actor.typed.Behavior
@@ -10,10 +16,12 @@ import org.eclipse.rdf4j.rio.{RDFFormat, RDFWriter, Rio}
 import run.cosy.RDF.Rdf
 import run.cosy.http.RDFMediaTypes.{`application/trig`, `text/turtle`}
 import run.cosy.http.RdfParser
+import run.cosy.ldp.{ACInfo, SolidPostOffice}
 import run.cosy.ldp.Messages.CmdMessage
 import run.cosy.ldp.SolidCmd.Plain
-import run.cosy.ldp.fs.BasicContainer.PostCreation
+import run.cosy.ldp.fs.BasicContainer.{PostCreation, aclLinks}
 import run.cosy.ldp.fs.Resource.AcceptMsg
+import run.cosy.ldp.ACInfo.*
 
 import java.io.ByteArrayOutputStream
 import java.nio.file.{CopyOption, Files, Path as FPath}
@@ -32,11 +40,10 @@ object ACResource:
        //			val registry = ResourceRegistry(context.system)
        //			registry.addActorRef(rUri.path, context.self)
        //			context.log.info("started LDPR actor at " + rUri.path)
-       new ACResource(rUri, linkName, context).behavior
+       new ACResource(rUri, linkName, context).behavior(Root(rUri))
      }
 
 /** Actor for Access Control resources, currently ".acl"
-  * 
   */
 class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
     extends ResourceTrait(uri, path, context):
@@ -55,21 +62,27 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
 
    // We should adopt default behavior perhaps`
    @throws[SecurityException]
-   override def linkedToFileDoesNotExist(linkTo: String): Option[Behaviors.Receive[AcceptMsg]] =
+   override def linkedToFileDoesNotExist(
+       linkTo: String,
+       acinfo: ACInfo
+   ): Option[Behaviors.Receive[AcceptMsg]] =
      if !Files.exists(path.resolveSibling(linkTo)) then Some(defaultBehavior)
      else None
 
    // Default behavior is the same as normal behavior, except that a GET on the resource returns the default
    // representation amd a PUT does not first check the file to get its properties
-   def defaultBehavior: Behaviors.Receive[AcceptMsg] = VersionsInfo(0, path).NormalBehavior
+   def defaultBehavior: Behaviors.Receive[AcceptMsg] = VersionsInfo(0, path,
+     Root(uri)).NormalBehavior
 
    /** Difference with superclass:
      *   - the Version 0 of an acl resource returns the default graph and a PUT on it does not check
      *     the file attributes
      *   - A request for NTrig returns the closure of the :imports relations of the resources
      */
-   def VersionsInfo(lastVersion: Int, linkTo: FPath): VersionsInfo =
-     new VersionsInfo(lastVersion, linkTo):
+   def VersionsInfo(lastVersion: Int, linkTo: FPath, acinfo: ACInfo): VersionsInfo =
+     // todo: the ACRef is not used. of the ACL resource is itself
+     // if an ACR could have another ACR then that would need to be written somewhere.
+     new VersionsInfo(lastVersion, linkTo, acinfo):
         import run.cosy.ldp.SolidCmd
         import run.cosy.ldp.fs.BasicContainer.AcceptMsg
 
@@ -178,7 +191,7 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
            val mediaRanges: Seq[MediaRange] = req.headers[Accept].flatMap(_.mediaRanges)
            if lastVersion == 0 then
               RdfParser.response(defaultGraph, mediaRanges)
-                .withHeaders(Link(AclLink) :: ACResource.VersionHeaders)
+                .withHeaders(Link(aclLinks(aclUri, acinfo)) :: ACResource.VersionHeaders)
            else super.plainGet(req)
 
         override def Put(cmd: CmdMessage[?]): Unit =

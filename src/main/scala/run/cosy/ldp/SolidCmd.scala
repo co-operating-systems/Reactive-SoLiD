@@ -24,6 +24,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Success, Try}
 
 /** Commands on the Server. All commands are executed on a resource named by a URL.
+  * @tparam A
+  *   The return type of the Command
   */
 sealed trait SolidCmd[A]:
    def url: Uri

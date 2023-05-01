@@ -9,7 +9,15 @@ package run.cosy.http.auth
 import akka.actor.testkit.typed.scaladsl.{ActorTestKit, TestProbe}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior, Scheduler}
 import akka.http.javadsl.model.headers.HttpCredentials
-import akka.http.scaladsl.model.headers.{Accept, Authorization, GenericHttpCredentials, HttpChallenge, Location, `WWW-Authenticate`}
+import akka.http.scaladsl.model.headers.{
+  Accept,
+  Authorization,
+  GenericHttpCredentials,
+  HttpChallenge,
+  Link,
+  Location,
+  `WWW-Authenticate`
+}
 import akka.http.scaladsl.model.*
 import akka.http.scaladsl.server.AuthenticationFailedRejection
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsRejected
@@ -30,9 +38,10 @@ import run.cosy.http.auth.WebServerAgent
 import run.cosy.ldp.ResourceRegistry
 import run.cosy.ldp.testUtils.TmpDir.{createDir, deleteDir}
 import run.cosy.http.RDFMediaTypes.*
+import run.cosy.ldp.SolidPostOffice
 import run.cosy.http.RdfParser.{rdfRequest, rdfUnmarshaller}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
-import run.cosy.ldp.ACLInfo.*
+import run.cosy.ldp.ACInfo.*
 
 class TestSolidLDPAuthSpec extends AnyWordSpec with Matchers with ScalatestRouteTest:
 
@@ -50,21 +59,23 @@ class TestSolidLDPAuthSpec extends AnyWordSpec with Matchers with ScalatestRoute
    // so it needs to adapt the system:
    import akka.actor.typed.scaladsl.adapter.{given, *}
    given typedSystem: ActorSystem[Nothing] = system.toTyped
-   given registry: ResourceRegistry        = ResourceRegistry(typedSystem)
+   given registry: SolidPostOffice         = SolidPostOffice(typedSystem)
    implicit val timeout: Timeout           = Timeout(5000.milliseconds)
    implicit val scheduler: Scheduler       = typedSystem.scheduler
 
    val rootUri: Uri = Uri("http://localhost:8080")
+   val rootAcl: Uri = Uri("http://localhost:8080/.acl")
 
    import akka.http.scaladsl.model.headers
 
    def toUri(path: String): Uri = rootUri.withPath(Uri.Path(path))
 
    def withServer(test: Solid => Any): Unit =
-      val testKit                                      = ActorTestKit()
-      val rootCntr: Behavior[BasicContainer.AcceptMsg] = BasicContainer(rootUri, dirPath, NotKnown)
+      val testKit = ActorTestKit()
+      val rootCntr: Behavior[BasicContainer.AcceptMsg] = BasicContainer(rootUri, dirPath,
+        Root(rootAcl))
       val rootActr: ActorRef[BasicContainer.AcceptMsg] = testKit.spawn(rootCntr, "solid")
-      val solid = new Solid(rootUri, dirPath, registry, rootActr)
+      val solid                                        = new Solid(rootUri, dirPath)
       try
         test(solid)
       finally testKit.shutdownTestKit()
@@ -81,7 +92,7 @@ class TestSolidLDPAuthSpec extends AnyWordSpec with Matchers with ScalatestRoute
           }
 
       def newContainer(baseDir: Uri, slug: Slug): Uri =
-        Req.Post(baseDir).withHeaders(slug, BasicContainer.LDPLinkHeaders) ~>
+        Req.Post(baseDir).withHeaders(slug, Link(BasicContainer.LDPLinkHeaders)) ~>
           solid.routeLdp(agent) ~> check {
             status shouldEqual StatusCodes.Created
             header[Location].get.uri

@@ -25,10 +25,13 @@ import _root_.run.cosy.http.auth.*
 import _root_.run.cosy.http.util.UriX.*
 import _root_.run.cosy.http.{IResponse, RDFMediaTypes, RdfParser, messages, Http as cHttp}
 import _root_.run.cosy.ldp
-import _root_.run.cosy.ldp.{ResourceRegistry, Messages as LDP}
+import _root_.run.cosy.ldp.{ACInfo, ResourceRegistry, SolidPostOffice, Messages as LDP}
 import cats.data.NonEmptyList
 import cats.effect.IO
-import run.cosy.ldp.ACLInfo.*
+import run.cosy.Solid.pathToList
+import run.cosy.ldp.ACInfo.*
+import run.cosy.ldp.fs.{BasicContainer, Spawner}
+import run.cosy.ldp.fs.BasicContainer.AcceptMsg
 
 import _root_.java.io.{File, FileInputStream}
 import _root_.java.nio.file.{Files, Path}
@@ -47,15 +50,19 @@ object Solid:
 
    def apply(uri: Uri, fpath: Path): Behavior[Run] =
      Behaviors.setup { (ctx: ActorContext[Run]) =>
-        import run.cosy.ldp.fs.BasicContainer
+        // todo: test if .acl file exists
+        // todo: test if .acl file contains enough info to authenticate owner
+        // todo: replace names with .ac
+
         given system: ActorSystem[Nothing] = ctx.system
-        given reg: ResourceRegistry        = ResourceRegistry(ctx.system)
-        val rootRef: ActorRef[LDP.Cmd] = ctx.spawn(
-          BasicContainer(uri.withoutSlash, fpath, NotKnown),
+        val defaultAcl                     = uri.copy(path = uri.path ?/ ".acl")
+        val rootRef: ActorRef[AcceptMsg] = ctx.spawn(
+          BasicContainer(uri.withoutSlash, fpath, Root(defaultAcl)),
           "solid"
         )
-        val registry               = ResourceRegistry(system)
-        val solid                  = new Solid(uri, fpath, registry, rootRef)
+        SolidPostOffice(system).addRoot(uri, rootRef)
+        // todo: why this and given reg?
+        val solid                  = new Solid(uri, fpath)
         given timeout: Scheduler   = system.scheduler
         given ec: ExecutionContext = ctx.executionContext
 
@@ -156,9 +163,7 @@ object Solid:
   */
 class Solid(
     baseUri: Uri,
-    path: Path,
-    registry: ResourceRegistry,
-    rootRef: ActorRef[LDP.Cmd]
+    path: Path
 )(using sys: ActorSystem[?]):
 
    import _root_.akka.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
@@ -169,9 +174,9 @@ class Solid(
    import _root_.scala.concurrent.duration.*
    import _root_.scala.jdk.CollectionConverters.*
 
-   given timeout: Scheduler    = sys.scheduler
-   given scheduler: Timeout    = Timeout(5.second)
-   given reg: ResourceRegistry = registry
+   given timeout: Scheduler   = sys.scheduler
+   given scheduler: Timeout   = Timeout(5.second)
+   given ec: ExecutionContext = sys.executionContext
 
    // because we use cats.effect.IO we need a
    // but we could also do without it by just using Future
@@ -236,33 +241,16 @@ class Solid(
    import _root_.run.cosy.ldp.SolidCmd
 
    def routeLdp(agent: Agent = new Anonymous()): Route = (reqc: RequestContext) =>
-      val path = reqc.request.uri.path
-      import reqc.given
-      reqc.log.info("routing req " + reqc.request.uri)
-      // todo use the acl info
-      val (remaining: List[String], actor: ActorRef[LDP.Route], containerDir: MsgACL) =
-        registry.getActorRef(path).map {
-          (p: List[String], ref: ActorRef[LDP.Route], optAclRef: Option[ActorRef[LDP.Route]]) =>
-            (p, ref,
-              optAclRef match
-               case Some(aclRef) => ParentAcl(aclRef, true)
-               case None         => NotKnown
-            )
-        }.getOrElse((List[String](), rootRef, NotKnown))
+     // todo: the path here supposes that the root container is at the root of the web server
+     //    we may want more flexibility here...
 
-      reqc.log.info(s"($remaining, $actor) = registry.getActorRef($path)")
+// todo: remove this commented code. Just there until commit
+//      def routeWith(replyTo: ActorRef[HttpResponse]): LDP.Route = LDP.RouteMsg(
+//        NonEmptyList("/", remaining),
+//        LDP.CmdMessage(SolidCmd.plain(reqc.request), agent, replyTo),
+//        acDir
+//      ).nextRoute(Root(baseUri.copy(path = Uri.Path("/.acl"))))
 
-      def routeWith(replyTo: ActorRef[HttpResponse]): LDP.Route = LDP.RouteMsg(
-        NonEmptyList("/", remaining),
-        LDP.CmdMessage(SolidCmd.plain(reqc.request), agent, replyTo),
-        containerDir
-      ).nextRoute(NotKnown)
-
-      actor.ask[HttpResponse](routeWith).map(RouteResult.Complete(_))
-
-   //  def handle(request: HttpRequest): Future[HttpResponse] = {
-   //    // todo: what does the type of this message have to be to receive a HttpResponse?
-   //      registry.getActorRef(request.uri.path) match {
-   //        case Some(ref) => ctxt.ask(ref) toMessage(request).asInstanceOf[Future[HttpResponse]]
-   //        case None => Future.successful(HttpResponse(StatusCodes.ServiceUnavailable))
-   //      }
+     // todo: do we need the nextRoute(...) added above?
+     SolidPostOffice(sys).ask[HttpResponse](SolidCmd.plain(reqc.request), agent)
+       .map(RouteResult.Complete)
