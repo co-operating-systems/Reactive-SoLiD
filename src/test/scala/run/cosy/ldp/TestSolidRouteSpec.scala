@@ -12,6 +12,7 @@ import akka.http.javadsl.model.headers.HttpCredentials
 import akka.http.scaladsl.model.*
 import akka.http.scaladsl.model.HttpHeader.ParsingResult.Ok
 import akka.http.scaladsl.model.MediaRanges.`*/*`
+import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.*
 import akka.http.scaladsl.model.headers.*
 import akka.http.scaladsl.model.headers.LinkParams.rel
@@ -19,7 +20,6 @@ import akka.http.scaladsl.server.AuthenticationFailedRejection
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsRejected
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
-import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.util.Timeout
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
@@ -32,9 +32,9 @@ import run.cosy.http.auth.*
 import run.cosy.http.headers.Slug
 import run.cosy.http.util.UriX.*
 import run.cosy.http.{RDFMediaTypes, RdfParser}
-import run.cosy.ldp.fs.BasicContainer
 import run.cosy.ldp.ACInfo.*
 import run.cosy.ldp.TestSolidRouteSpec.{AccessControl, aclEffectiveLinkHeaders, aclLinkHeaders}
+import run.cosy.ldp.fs.BasicContainer
 import run.cosy.ldp.testUtils.TmpDir.{createDir, deleteDir}
 import run.cosy.{Solid, SolidTest}
 
