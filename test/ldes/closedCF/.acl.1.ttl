@@ -1,6 +1,6 @@
 @prefix wac: <http://www.w3.org/ns/auth/acl#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-@prefix security: <https://w3id.org/security/v1#> .
+@prefix security: <https://w3id.org/security#> .
 
 <#R0> a wac:Authorization; 
    wac:mode wac:Control;

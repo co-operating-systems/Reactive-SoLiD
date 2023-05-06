@@ -11,9 +11,12 @@ Note: Access Control is not part of LDP but of Solid. This suggests that those s
 The Web Access Control logic is defined in the [Web Access Control](https://solidproject.org/TR/wac) spec. The section [ACL Resource Discovery](https://solidproject.org/TR/wac#effective-acl-resource), explains how to determine the effective acl resource by starting from the acl of a resource. If the acl does not exist, then one should search for the resource container's acl, and if that does not exist, one should search for the container's containers acl, etc... The problem is that for a client [Effective ACL Resource discovery requires 2n+1 requests](https://github.com/solid/web-access-control-spec/issues/99). Given the limitations on the speed of light, that type of requirement is much too costly for a client trying to find the effective acl. Furthermore, for any Pod that has more than one owner, this link following will have to be done just to find out who the controller of the resource is if one wants to create it. 
 
 To solve the [2n+1 problem](https://github.com/solid/web-access-control-spec/issues/99) I will use [this simple proposal](https://github.com/solid/specification/issues/325#issuecomment-1474817231) to link to the effective acl
-
+Note that because of a problem between the server and the client 
+implementations of the [Link header](https://github.
+com/http4s/http4s/issues/7101), that should be remedied soon, I will instead
+use "effectiveAccessControl"
 ```http
-Link: </defaul.ac>; rel="https://www.w3.org/ns/auth/acl#accessControl`
+Link: </defaul.ac>; rel="effectiveAccessControl`
 ```
 
 ## Implementation

@@ -101,12 +101,12 @@ object BasicContainer:
    val ldpr  = ldp.Resource.toAkka
 
    // see proposal: https://github.com/solid/specification/issues/325#issuecomment-1474817231
-   val effectiveAclUrl = Uri("https://www.w3.org/ns/auth/acl#accessControl")
+   val effectiveACLink = "effectiveAccessControl"
 
    def aclLinks(acl: Uri, active: ACInfo): List[LinkValue] =
      LinkValue(acl, LinkParams.rel("acl")) :: {
        if acl == active.acl then Nil
-       else LinkValue(active.acl, LinkParams.rel(BasicContainer.effectiveAclUrl.toString())) :: Nil
+       else LinkValue(active.acl, LinkParams.rel(BasicContainer.effectiveACLink)) :: Nil
      }
 
    /** A collection of "unwise" characters according to
@@ -436,7 +436,7 @@ class BasicContainer private (
         then None
         else
            Some(RawHeader("Link",
-             s"""<${effectiveAcl.acl}>; rel="${BasicContainer.effectiveAclUrl}""""))
+             s"""<${effectiveAcl.acl}>; rel="${BasicContainer.effectiveACLink}""""))
 
       lazy val start: Behavior[AcceptMsg] =
         Behaviors.receiveMessage[AcceptMsg] { (msg: AcceptMsg) =>
