@@ -21,7 +21,7 @@ class TestWacHint extends munit.FunSuite:
    def bblKey: Rdf#URI              = URI("https://bblfish.net/keys/key1#")
 
    test("empty path construction - no hint") {
-     val Some(h1) = Path()
+     val h1 = Path().get
      assert(h1.path.isEmpty)
      assert(h1.groupByResource.isEmpty)
    }
@@ -29,11 +29,11 @@ class TestWacHint extends munit.FunSuite:
    val auth1 = alice("doc.acl#auth1")
 
    test("simple path construction with intermediate blank node") {
-     val Some(p1) = Path(
+     val p1 = Path(
        NNode(auth1), Rel(wac.agent),
        whBNode(), Rev(security.controller),
        NNode(bblKey)
-     )
+     ).get
      val expectedPathLst = List[Triple](
        (NNode(auth1), Rel(wac.agent), whBNode()),
        (whBNode(), Rev(security.controller), NNode(bblKey))
@@ -45,11 +45,11 @@ class TestWacHint extends munit.FunSuite:
 
    test("simple path construction with 2 jumps") {
 
-     val Some(p1) = Path(
+     val p1 = Path(
        NNode(auth1), Rel(wac.agent),
        NNode(bbl), Rev(security.controller),
        NNode(bblKey)
-     )
+     ).get
      assertEquals(p1.path.size, 2)
      val expectedPathLst = List[Triple](
        (NNode(auth1), Rel(wac.agent), NNode(bbl)),
@@ -61,12 +61,12 @@ class TestWacHint extends munit.FunSuite:
    }
 
    test("more complex graph construction") {
-     val Some(p1) = Path(
+     val p1 = Path(
        NNode(auth1), Rel(wac.agentGroup),
        whBNode(), Rel(foaf.member),
        NNode(bbl), Rev(security.controller),
        NNode(bblKey)
-     )
+     ).get
      val expectedPathLst = List[Triple](
        (NNode(auth1), Rel(wac.agentGroup), whBNode()),
        (whBNode(), Rel(foaf.member), NNode(bbl)),

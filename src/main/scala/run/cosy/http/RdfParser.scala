@@ -74,7 +74,7 @@ object RdfParser:
    /** @param base : the URI at which the document was resolved */
    def rdfUnmarshaller(base: Uri): FromEntityUnmarshaller[Rdf#Graph] =
      // todo: this loads everything into a string - bad
-     PredefinedFromEntityUnmarshallers.stringUnmarshaller flatMapWithInput { (entity, string) ⇒
+     PredefinedFromEntityUnmarshallers.stringUnmarshaller flatMapWithInput { (entity, string) =>
         def parseWith[T](reader: RDFReader[Rdf, Try, T]) = Future.fromTry {
           reader.read(new java.io.StringReader(string), base.toString)
         }

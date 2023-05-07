@@ -21,7 +21,7 @@ class TestAttributesFn extends munit.FunSuite:
       import java.nio.file.Paths
       import scala.util.Try
       // create symlink
-      val att: Try[Attributes.SymLink] = Attributes.createLink(dirPath, "hello", "hello.txt")
+      val att: Try[Attributes.SymLink] = Attributes.createSymLink(dirPath, "hello", "hello.txt")
       assert(att.isSuccess)
       val sl: Attributes.SymLink = att.get
       assertEquals(sl.path, dirPath.resolve("hello"), att)

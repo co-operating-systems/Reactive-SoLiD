@@ -1,0 +1,54 @@
+@prefix crop:     <https://data.cropland.be/area#> .
+@prefix cropProp: <https://data.cropland.be/measure#> .
+@prefix dcat:     <http://www.w3.org/ns/dcat#> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix ldes:     <https://w3id.org/ldes#> .
+@prefix polMsr:   <https://data.politie.be/sensors/measurement#> .
+@prefix pzDev:    <https://data.politie.be/sensor/dev#> .
+@prefix sosa:     <http://www.w3.org/ns/sosa/> .
+@prefix tree:     <https://w3id.org/tree#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+
+<>      a              tree:Node ;
+        tree:relation  [ a           tree:LessThanRelation ;
+                         tree:node   <2021-09-05> ;
+                         tree:path   sosa:resultTime ;
+                         tree:value  "2021-09-06T00:00:00+02"^^xsd:dateTimeStamp
+                       ] ;
+        tree:relation  [ a           tree:GreaterThanRelation ;
+                         tree:node   <2021-09-07> ;
+                         tree:path   sosa:resultTime ;
+                         tree:value  "2021-09-07T00:00:00+02"^^xsd:dateTimeStamp
+                       ] .
+
+<stream#>     a                   ldes:EventStream ;
+        ldes:timestampPath  sosa:resultTime ;
+        tree:member        <#3003>, <#4493>, <#48>; 
+        tree:shape          <flows-shacl> ;
+        tree:view           <> .
+
+<#3003>  a                     sosa:Observation ;
+        <http://www.w3.org/2003/01/geo/wgs84_pos#location>
+                <area#loc763628> ;
+        sosa:hasSimpleResult   "44.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-06T11:00:00+02"^^xsd:dateTimeStamp .
+
+<#4493>  a                     sosa:Observation ;
+        <http://www.w3.org/2003/01/geo/wgs84_pos#location>
+                <area#loc734383> ;
+        sosa:hasSimpleResult   "197.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-06T12:00:00+02"^^xsd:dateTimeStamp .
+
+<#48>   a                      sosa:Observation ;
+        <http://www.w3.org/2003/01/geo/wgs84_pos#location>
+                <area#loc781089> ;
+        sosa:hasSimpleResult   "1.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-06T22:00:00+02"^^xsd:dateTimeStamp .
+
+

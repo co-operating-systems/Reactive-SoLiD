@@ -5,8 +5,8 @@ import sbt.{CrossVersion, Def, *}
 object Dependencies {
 
   object Versions {
-    val Akka               = "2.6.20"
-    val AkkaHttp           = "10.2.10"
+    val Akka               = "2.8.0"
+    val AkkaHttp           = "10.5.1"
     val scalaz             = "7.4.0-M7"
     val banana             = "0.8.6"
     val alpakka            = "4.0.0"
@@ -18,7 +18,7 @@ object Dependencies {
     val catsEffect         = "3.3.5"
     val scalatest          = "3.2.11"
     val titaniumJSonLD     = "1.2.0"
-    val nimbusDS           = "9.25.5"
+    val nimbusDS           = "9.25.6"
     val logback            = "1.2.3"
     val apacheCommonsCodec = "1.15"
     val izumiReflect       = "1.1.3-RC1"
@@ -150,7 +150,7 @@ object Dependencies {
       */
     val catsFree = "org.typelevel" %% "cats-free" % V.catsFree
 
-    val bobcats = "net.bblfish.crypto" %% "bobcats" % "0.2-7a91946-SNAPSHOT"
+    val bobcats = "net.bblfish.crypto" %% "bobcats" % "0.3-3236e64-SNAPSHOT"
 
     /** MIT License
       *
@@ -182,7 +182,7 @@ object Dependencies {
     val disciplineMunit = "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test
 
     val akkaHttpSig =
-         "net.bblfish.crypto" %% "akka-http-signature" % "0.2-e5ac965-SNAPSHOT"
+      "net.bblfish.crypto" %% "akka-http-signature" % "0.4-b4ee7cc-SNAPSHOT"
 
     val all = Seq(
       catsCore,

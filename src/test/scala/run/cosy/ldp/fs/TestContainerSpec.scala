@@ -22,7 +22,7 @@ import _root_.akka.http.scaladsl.model.{
   MediaRanges,
   MediaTypes
 }
-import run.cosy.ldp.{Messages, ResourceRegistry, SolidCmd}
+import run.cosy.ldp.{Messages, ResourceRegistry, SolidCmd, SolidPostOffice}
 import run.cosy.ldp.fs.BasicContainer
 
 import java.nio.file.Files
@@ -43,9 +43,11 @@ import akka.http.scaladsl.model.Uri
 import run.cosy.http.auth.WebServerAgent
 import run.cosy.ldp.testUtils.TmpDir
 import run.cosy.ldp.Messages.CmdMessage
+import run.cosy.ldp.ACInfo.*
 
 import java.nio.file
-import scalaz.NonEmptyList
+import cats.data.NonEmptyList
+import run.cosy.ldp.TestSolidRouteSpec.ServerData
 
 class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers:
 
@@ -63,8 +65,9 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
       import akka.http.scaladsl.model.HttpResponse
       val rootUri = Uri("http://localhost:8080")
 
-      given registry: ResourceRegistry                 = ResourceRegistry(testKit.system)
-      val rootCntr: Behavior[BasicContainer.AcceptMsg] = BasicContainer(rootUri, dirPath)
+      given po: SolidPostOffice = SolidPostOffice(testKit.system)
+      val rootCntr: Behavior[BasicContainer.AcceptMsg] = BasicContainer(rootUri, dirPath,
+        Root(ServerData.rootACL._1))
       val rootActr: ActorRef[BasicContainer.AcceptMsg] = testKit.spawn(rootCntr, "solid")
       val probe                                        = testKit.createTestProbe[HttpResponse]()
       given classic: ActorSystem                       = testKit.system.classicSystem
@@ -86,7 +89,7 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
           probe.ref
         ))
 
-        val HttpResponse(status, hdrs, response, protocol) = probe.receiveMessage()
+        val HttpResponse(status, hdrs, response, protocol) = probe.receiveMessage(): @unchecked
         assert(status == Created)
         assert(hdrs.contains(Location(rootUri.withPath(Uri.Path.Empty / ("Hello")))))
         assert(response.contentType.mediaType == MediaTypes.`text/plain`)
@@ -94,7 +97,7 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
       {
         // Read Hello
         rootActr ! Messages.RouteMsg(
-          NonEmptyList("Hello"),
+          NonEmptyList.one("Hello"),
           CmdMessage(
             SolidCmd.plain(
               HttpRequest(
@@ -105,9 +108,10 @@ class TestContainerSpec extends AnyFlatSpec with BeforeAndAfterAll with Matchers
             ),
             WebServerAgent,
             probe.ref
-          )
+          ),
+          Root(ServerData.rootACL._1)
         )
-        val HttpResponse(status, hdrs, response, protocol) = probe.receiveMessage()
+        val HttpResponse(status, hdrs, response, protocol) = probe.receiveMessage(): @unchecked
         assert(status == OK)
         //	assert(hdrs.contains(Location(rootUri.withPath(Uri.Path.Empty / ("Hello.txt")))))
         assert(response.contentType.mediaType == MediaTypes.`text/plain`)

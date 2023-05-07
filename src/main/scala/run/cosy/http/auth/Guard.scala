@@ -6,14 +6,18 @@
 
 package run.cosy.http.auth
 
+import akka.actor.typed.ActorRef
 import akka.http.scaladsl.model.{HttpMethod, Uri}
 import org.w3.banana.{PointedGraphs, WebACLPrefix}
 import run.cosy.ldp.SolidCmd.ReqDataSet
 import akka.actor.typed.scaladsl.ActorContext
-import akka.http.scaladsl.model.headers.{Link, LinkParam, LinkParams}
+import akka.http.scaladsl.model.headers.{Link, LinkParam, LinkParams, LinkValue}
 import cats.free.Free
-import run.cosy.ldp.Messages.CmdMessage
+import run.cosy.ldp.ACInfo
+import run.cosy.ldp.Messages.{CmdMessage, Route}
+import run.cosy.ldp.fs.BasicContainer
 import run.cosy.ldp.rdf.LocatedGraphs.{LGs, LocatedGraph, Pointed, PtsLGraph}
+import run.cosy.ldp.ACInfo.*
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
@@ -165,13 +169,15 @@ object Guard:
          authorize(filterRulesFor(unionAll(reqDS), target, m), agent)
        case _ => false
 
-   def aclLink(acl: Uri): Link = Link(acl, LinkParams.rel("acl"))
-
-   /** we authorize the top command `msg` - it does not really matter what T the end result is. 
-     * @param msg the message to authorize
-     * @param aclUri the URL of the acl that allows access           
-     * */
-   def Authorize[T](msg: CmdMessage[T], aclUri: Uri)(using
+   /** we authorize the top command `msg` - it does not really matter what T the end result is.
+     * @param msg
+     *   the message to authorize
+     * @param msgACL
+     *   the closest default ACL from the message if known
+     * @param aclUri
+     *   the URL of the acl that allows access
+     */
+   def Authorize[T](msg: CmdMessage[T], msgACL: ACInfo, aclUri: Uri)(using
        context: ActorContext[ScriptMsg[?] | Do]
    ): Unit =
       // todo!!: set timeout in config!!
@@ -186,42 +192,45 @@ object Guard:
          msg.commands match
           case p: Plain[?] =>
             import msg.given
-            // this script should be sent with admin rights.
+// todo: this is an optimisation to send the message directly to the ACL actor,
+//    but it requires getting the acl ActorRef be of a type which accepts ScriptMsg[Boolean]
+//    containers do that, but we'd need to check if
+//          val (sendTo: ActorRef[ScriptMsg[Boolean]], activeAcl: Uri) =
+//              msgACL match
+//                case Root(acl) => (context.self, acl)
+//                case ACContainer(acl, containerRef) => (containerRef, acl)
+//                case ACRef(acl, aclRef) => (aclRef, acl)
+            // this script is sent with admin rights.
             // note: it could also be sent with the rights of the user, meaning that if the user cannot
             //   read an acl rule, then it has no access. But that would slow things down as it would require
             //   every request on every acl to be access controlled!
             context.ask[ScriptMsg[Boolean], Boolean](
-              context.self,
+              context.self, // todo: see above, should be able to send directly to destination
               ref =>
                 ScriptMsg[Boolean](
-                  authorizeScript(aclUri, msg.from, msg.target, p.req.method),
+                  authorizeScript(msgACL.acl, msg.from, msg.target, p.req.method),
                   WebServerAgent,
                   ref
                 )
             ) {
-              case Success(true) =>
-                Do(msg)
+              case Success(true) => Do(msg)
               case Success(false) =>
                 context.log.info(s"failed to authorize ${msg.target} ")
                 msg.respondWithScr(HttpResponse(
                   StatusCodes.Unauthorized,
-                  Seq(
-                    aclLink(aclUri),
-                    `WWW-Authenticate`(HttpChallenge("HttpSig", s"${msg.target}"))
-                  )
+                  `WWW-Authenticate`(HttpChallenge("HttpSig", s"${msg.target}")) ::
+                    Link(BasicContainer.aclLinks(aclUri, msgACL)) :: Nil
                 ))
               case Failure(e) =>
                 context.log.info(s"Unable to authorize ${msg.target}: $e ")
                 msg.respondWithScr(HttpResponse(
                   StatusCodes.Unauthorized,
-                  Seq(
-                    aclLink(aclUri),
-                    `WWW-Authenticate`(HttpChallenge("HttpSig", s"${msg.target}"))
-                  ),
+                  `WWW-Authenticate`(HttpChallenge("HttpSig", s"${msg.target}"))
+                    :: Link(BasicContainer.aclLinks(aclUri, msgACL)) :: Nil,
                   HttpEntity(ContentTypes.`text/plain(UTF-8)`, e.getMessage)
                 ))
             }
-          case _ => // the other messages end up getting translated to Plain reuests . todo: check
+          case _ => // the other messages end up getting translated to Plain requests . todo: check
             context.self ! Do(msg)
    end Authorize
 

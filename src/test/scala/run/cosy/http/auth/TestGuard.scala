@@ -129,45 +129,51 @@ class TestGuard extends munit.FunSuite:
        "The root rule applies by default to Tim Berners-Lee's card, disallowing PUT by anonymous"
      )
    }
-   
+
    val readmeACL = (ws.base / "README.acl")
-   val readme = (ws.base / "README")
-   val indexACL = (ws.base / "index.acl")
-   val index    = (ws.base / "index")
- 
+   val readme    = (ws.base / "README")
+   val indexACL  = (ws.base / "index.acl")
+   val index     = (ws.base / "index")
+
    test("acl with no owl:imports giving read access to itself") {
-     val rmACLGet = Guard.authorizeScript(readmeACL, Anonymous(), readmeACL, GET).foldMap(aclBasic.eval)
+     val rmACLGet =
+       Guard.authorizeScript(readmeACL, Anonymous(), readmeACL, GET).foldMap(aclBasic.eval)
      assert(rmACLGet, "/README.acl is readable by all")
-     
-     val rmACLPUT = Guard.authorizeScript(readmeACL, Anonymous(), readmeACL, PUT).foldMap(aclBasic.eval)
+
+     val rmACLPUT =
+       Guard.authorizeScript(readmeACL, Anonymous(), readmeACL, PUT).foldMap(aclBasic.eval)
      assert(!rmACLPUT, "/README.acl is not writeable by all")
-     
+
      val rmGET = Guard.authorizeScript(readmeACL, Anonymous(), readme, GET).foldMap(aclBasic.eval)
      assert(rmGET, "/README is readable by all")
-     
+
      val rmPUT = Guard.authorizeScript(readmeACL, Anonymous(), readme, PUT).foldMap(aclBasic.eval)
      assert(!rmPUT, "/README is not Writeable by all")
-     
+
      val wrongGET = Guard.authorizeScript(readmeACL, Anonymous(), index, GET).foldMap(aclBasic.eval)
      assert(!wrongGET, "README.acl does not give any rights to /index")
    }
-   
-   val hiddenAcl = (ws.base / "aclsHidden"/ "README.acl")
-   val readmeNotHidden = (ws.base / "aclsHidden"/ "README")
-   
+
+   val hiddenAcl       = (ws.base / "aclsHidden" / "README.acl")
+   val readmeNotHidden = (ws.base / "aclsHidden" / "README")
+
    test("hidden acl with no owl:imports") {
-     val readmeACLGet = Guard.authorizeScript(hiddenAcl, Anonymous(), hiddenAcl, GET).foldMap(aclBasic.eval)
+     val readmeACLGet =
+       Guard.authorizeScript(hiddenAcl, Anonymous(), hiddenAcl, GET).foldMap(aclBasic.eval)
      assert(!readmeACLGet, s"$hiddenAcl is not readable by all")
-     
-     val readmeACLPut = Guard.authorizeScript(hiddenAcl, Anonymous(), hiddenAcl, PUT).foldMap(aclBasic.eval)
+
+     val readmeACLPut =
+       Guard.authorizeScript(hiddenAcl, Anonymous(), hiddenAcl, PUT).foldMap(aclBasic.eval)
      assert(!readmeACLPut, s"$hiddenAcl is not writeable by all")
-     
-     val readmeGet = Guard.authorizeScript(hiddenAcl, Anonymous(), readmeNotHidden, GET).foldMap(aclBasic.eval)
+
+     val readmeGet =
+       Guard.authorizeScript(hiddenAcl, Anonymous(), readmeNotHidden, GET).foldMap(aclBasic.eval)
      assert(readmeGet, s"$hiddenAcl makes $readmeNotHidden readable by all")
 
-     val readmePut = Guard.authorizeScript(hiddenAcl, Anonymous(), readmeNotHidden, PUT).foldMap(aclBasic.eval)
+     val readmePut =
+       Guard.authorizeScript(hiddenAcl, Anonymous(), readmeNotHidden, PUT).foldMap(aclBasic.eval)
      assert(!readmePut, s"$hiddenAcl does not make $readmeNotHidden writeable by all")
-   
+
    }
 
    test("test access to /index ") {

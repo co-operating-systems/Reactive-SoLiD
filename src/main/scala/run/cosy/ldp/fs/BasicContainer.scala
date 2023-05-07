@@ -6,36 +6,15 @@
 
 package run.cosy.ldp.fs
 
+import _root_.run.cosy.http.util.UriX.*
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, Behavior, PostStop, PreRestart}
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior, PostStop, PreRestart}
+import akka.event.slf4j.Slf4jLogger
 import akka.http.scaladsl.model
-import akka.http.scaladsl.model.StatusCodes.{
-  Conflict,
-  Created,
-  Gone,
-  InternalServerError,
-  MovedPermanently,
-  NoContent,
-  NotFound,
-  NotImplemented,
-  OK,
-  PermanentRedirect,
-  UnsupportedMediaType
-}
-import akka.http.scaladsl.model.headers.{
-  Accept,
-  Allow,
-  HttpChallenge,
-  Link,
-  LinkParam,
-  LinkParams,
-  LinkValue,
-  RawHeader,
-  ResponseHeader,
-  `Content-Type`,
-  `WWW-Authenticate`
-}
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse, StatusCodes, Uri}
+import akka.http.scaladsl.model.*
+import akka.http.scaladsl.model.HttpMethods.*
+import akka.http.scaladsl.model.StatusCodes.{Success as _, *}
+import akka.http.scaladsl.model.headers.*
 import akka.http.scaladsl.server.ContentNegotiator.Alternative
 import akka.http.scaladsl.server.ContentNegotiator.Alternative.ContentType
 import akka.http.scaladsl.server.{RequestContext, RouteResult}
@@ -43,31 +22,27 @@ import akka.stream.scaladsl.{Concat, FileIO, Merge, RunnableGraph, Source}
 import akka.stream.{ActorMaterializer, IOResult, Materializer}
 import akka.util.ByteString
 import akka.{Done, NotUsed}
+import run.cosy.http.RDFMediaTypes.`text/turtle`
+import run.cosy.http.auth.*
 import run.cosy.http.headers.Slug
 import run.cosy.http.{IResponse, RDFMediaTypes, RdfParser}
-import run.cosy.http.auth.{Agent, Anonymous, Guard, KeyIdAgent, WebServerAgent}
-import run.cosy.http.RDFMediaTypes.`text/turtle`
+import run.cosy.ldp.ACInfo
+import run.cosy.ldp.ACInfo.{ACContainer, Root}
 import run.cosy.ldp.fs.BasicContainer
-import run.cosy.ldp.fs.BasicContainer.{AllowHeader, LinkHeaders, `Accept-Post`, rdfContentTypes}
-import run.cosy.ldp.{ResourceRegistry, SolidCmd}
+import run.cosy.ldp.fs.BasicContainer.{AllowHeader, LDPLinkHeaders, `Accept-Post`, rdfContentTypes}
+import run.cosy.ldp.{ResourceRegistry, SolidCmd, SolidPostOffice}
+import cats.data.NonEmptyList
 
 import java.io.{BufferedReader, BufferedWriter, FileReader, FileWriter}
 import java.lang.UnsupportedOperationException
+import java.nio.file.*
 import java.nio.file.attribute.UserDefinedFileAttributeView
-import java.nio.file.{FileAlreadyExistsException, FileSystem, FileVisitOption, Files, Path}
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId, ZoneOffset}
 import java.util.{Locale, stream}
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
-import scala.util.{Failure, Success, Try, Using}
-import akka.event.slf4j.Slf4jLogger
-import akka.http.scaladsl.model.HttpMethods.*
-import scalaz.NonEmptyList.nel
-import scalaz.{ICons, INil, NonEmptyList}
-
 import scala.collection.immutable.HashMap
-import scala.util.Random
-import _root_.run.cosy.http.util.UriX.*
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
+import scala.util.*
 
 /** An LDP/Solid Container corresponding to a directory on the FileSystem.
   *
@@ -111,20 +86,28 @@ import _root_.run.cosy.http.util.UriX.*
   */
 object BasicContainer:
 
+   import _root_.run.cosy.RDF.Prefix.ldp
+   import _root_.run.cosy.RDF.ops.{*, given}
+   import _root_.run.cosy.RDF.{*, given}
    import akka.http.scaladsl.model.HttpHeader
    import akka.http.scaladsl.model.HttpHeader.ParsingResult.Ok
+   import org.w3.banana.*
 
    import java.nio.file.{FileTreeIterator, FileVisitOption}
    import java.time.{Clock, Instant}
-   import java.util.{Spliterator, Spliterators}
    import java.util.stream.{Stream, StreamSupport}
-
-   import org.w3.banana.*
-   import _root_.run.cosy.RDF.{given, *}
-   import _root_.run.cosy.RDF.ops.{given, *}
-   import _root_.run.cosy.RDF.Prefix.ldp
+   import java.util.{Spliterator, Spliterators}
    val ldpBC = ldp.BasicContainer.toAkka
    val ldpr  = ldp.Resource.toAkka
+
+   // see proposal: https://github.com/solid/specification/issues/325#issuecomment-1474817231
+   val effectiveACLink = "effectiveAccessControl"
+
+   def aclLinks(acl: Uri, active: ACInfo): List[LinkValue] =
+     LinkValue(acl, LinkParams.rel("acl")) :: {
+       if acl == active.acl then Nil
+       else LinkValue(active.acl, LinkParams.rel(BasicContainer.effectiveACLink)) :: Nil
+     }
 
    /** A collection of "unwise" characters according to
      * [[https://tools.ietf.org/html/rfc2396#section-2.4.3 RFC 2396]].
@@ -187,9 +170,9 @@ object BasicContainer:
 //		//todo: factory throws an Exception, where is that caught?
 //		StreamConverters.fromJavaStream(factory)
 //	end ls
-   import akka.http.scaladsl.model.headers.LinkParams.rel
-   import akka.http.scaladsl.model.MediaRanges.`*/*`
    import RDFMediaTypes.`text/turtle`
+   import akka.http.scaladsl.model.MediaRanges.`*/*`
+   import akka.http.scaladsl.model.headers.LinkParams.rel
 
    // get all the  URIs with link rel="type"
    def filterLDPTypeLinks(links: Seq[Link]): Seq[Uri] =
@@ -200,7 +183,7 @@ object BasicContainer:
        }
      }
 
-   val LinkHeaders = Link(
+   val LDPLinkHeaders: List[LinkValue] = List(
      LinkValue(ldp.BasicContainer.toAkka, rel("type")),
      LinkValue(ldp.Resource.toAkka, rel("type"))
    )
@@ -223,21 +206,30 @@ object BasicContainer:
      )
    )
 
+   /** calculate the effective ACL given an acl from the msg, the locally known default acl, and the
+     * local aclUri Essentially nothing changes if the known ACL is the local one. If the knownACL
+     * is local then it will only change if the ACL resource is deleted... (note then the default
+     * Acl can be found by querying the registry)
+     */
+   def effectiveAcinfo(msgAcl: ACInfo, knownACL: ACInfo, localAcl: Uri): ACInfo =
+     if knownACL.acl == localAcl then knownACL else msgAcl // the latest info wins
+
+   import run.cosy.ldp.ACInfo
    import run.cosy.ldp.Messages.*
 
    type AcceptMsg = Cmd | PostCreation
 
    def apply(
        containerUrl: Uri,
-       dir: Path
-   )(using reg: ResourceRegistry): Behavior[AcceptMsg] =
+       dir: Path,
+       parentDefaultAcl: ACInfo
+   ): Behavior[AcceptMsg] =
      Behaviors.setup[AcceptMsg] { (context: ActorContext[AcceptMsg]) =>
         // val exists = Files.exists(root)
-        reg.addActorRef(containerUrl.path, context.self)
         context.log.info(
           s"started actor for <${containerUrl}> in dir <file:/${dir.toAbsolutePath}>"
         )
-        new BasicContainer(containerUrl, dir, new Spawner(context)).behavior
+        new BasicContainer(containerUrl, dir, new Spawner(context)).behavior(parentDefaultAcl)
      }
 
    /** The resource with `name` has been created, but the request `cmd` must still be completed.
@@ -251,6 +243,8 @@ object BasicContainer:
        name: Path,
        cmd: CmdMessage[?]
    )
+
+end BasicContainer
 
 /** Class of Resource objects, mapped to a path on the file system. Our convetion for files on the
   * FS at present (later to be modularized) is designed to avoid needing to load the container
@@ -322,25 +316,28 @@ class BasicContainer private (
     containerUrl: Uri,
     dirPath: Path,
     context: Spawner
-)(using reg: ResourceRegistry):
+):
+   import BasicContainer.*
    import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
    import akka.http.scaladsl.model.MediaTypes.{`text/plain`, `text/x-java-source`}
-   import akka.http.scaladsl.model.headers.{`Content-Type`, Link, LinkParams, LinkValue, Location}
+   import akka.http.scaladsl.model.headers.{Link, LinkParams, LinkValue, Location, `Content-Type`}
    import akka.http.scaladsl.model.{ContentTypes, HttpCharsets, HttpEntity, HttpMethods}
-   import BasicContainer.*
+   import run.cosy.ldp.ACInfo
    import run.cosy.ldp.Messages.*
    import run.cosy.ldp.SolidCmd.{Get, Plain, Script, Wait}
-   import run.cosy.ldp.fs.{CRef, Ref, RRef}
-   import run.cosy.ldp.fs.APath
    import run.cosy.ldp.fs.Attributes.{Archived, Other, OtherAtt}
+   import run.cosy.ldp.fs.{APath, CRef, RRef, Ref}
 
    import java.nio.file.attribute.BasicFileAttributes
    import java.time.Instant
-   // The types of references to data about respources associated with a path
+   // The types of references to data about resources associated with a path
    // `Ref`s have already launched an Actor
    type Refs     = Ref | ActorPath
    type Contents = HashMap[String, Refs]
    type Counter  = Map[String, Int]
+
+   given sys: ActorSystem[Nothing] = context.context.system
+   given po: SolidPostOffice       = SolidPostOffice(sys)
    // one could add a behavior for if it exists but is not a container
 
    // we don't need this yet, as we are not shutting down the Container Actor yet.
@@ -350,16 +347,28 @@ class BasicContainer private (
    //					Behaviors.stopped
    //			}
 
-   def behavior: Behavior[AcceptMsg] =
+   def behavior(aclLink: ACInfo): Behavior[AcceptMsg] =
       val isDir = Files.isDirectory(dirPath)
-      if isDir then new Dir().start
+      if isDir then
+         val aclProp: ACInfo =
+            val ctx = context.context
+            // if aclLink is aclUri, then we are at the root, and this document should be assumed to exist
+            val aclExists = aclLink.acl == aclUri || Files.exists(aclPath,
+              LinkOption.NOFOLLOW_LINKS)
+            SolidPostOffice(ctx.system).addActorRef(containerUrl, ctx.self, aclExists)
+            if aclExists then ACContainer(aclUri, context.context.self) else aclLink
+         Dir(effectiveAcl = aclProp).start
       else ??? // if PUT create dir else return error
 
    // url for resource with `name` in this container
    def urlFor(name: String): Uri = containerUrl.withPath(containerUrl.path / name)
-   lazy val aclUri: Uri          = containerUrl.withPath(containerUrl.path ?/ ".acl")
-   lazy val aclHeader            = Link(aclUri, LinkParams.rel("acl"))
-//	lazy val dotLinkName: DotFileName = DotFileName(linkName)
+
+   def aclPath: Path = dirPath.resolve(".acl")
+
+   /** aclUri could also be relative */
+   lazy val aclUri: Uri = containerUrl.withPath(containerUrl.path ?/ ".acl")
+   // todo: this could be simpler with a raw header Raw("Link", "<.acl>")
+   //	lazy val dotLinkName: DotFileName = DotFileName(linkName)
 
    /** Return a Source for reading the relevant files for this directory. Note: all symbolic links
      * and dirs are our resources, so long as they don't have a `.` in them.
@@ -401,9 +410,16 @@ class BasicContainer private (
 //			Behaviors.same
 //		}
 
-   // the dir behavior caches info about the ldp:contains relations and about counters for files
-   // to avoid requests to the FS
-   class Dir(contains: Contents = HashMap(), counters: Counter = HashMap()):
+   /** the dir behavior caches info about
+     *   - the ldp:contains relations
+     *   - about counters for files to avoid requests to the FS
+     *   - the closest acls that could contain a default
+     */
+   case class Dir(
+       contains: Contents = HashMap(),
+       counters: Counter = HashMap(),
+       effectiveAcl: ACInfo
+   ):
 
       import akka.stream.alpakka.file.scaladsl.Directory
 
@@ -411,20 +427,28 @@ class BasicContainer private (
       import java.time.Instant
       import scala.annotation.tailrec
 
-      /** Create ACL file. When should this be done? Certainly on creation. But what if there is no
-        * ACL on actor startup? What should be put in the ACL?
+      /** any default acl can only be a few containers up, so we calulate the number This then
+        * allows us to build a relative url for the acl, where we have the following correspondence:
+        * 0 -> <.acl> 1 -> <../.acl> 2 -> <../../.acl> etc...
         */
-//		def createACL(defaults: Rdf#Graph): Boolean = true
+      val EffectiveAcl: Option[RawHeader] =
+        if effectiveAcl.acl eq aclUri
+        then None
+        else
+           Some(RawHeader("Link",
+             s"""<${effectiveAcl.acl}>; rel="${BasicContainer.effectiveACLink}""""))
 
       lazy val start: Behavior[AcceptMsg] =
         Behaviors.receiveMessage[AcceptMsg] { (msg: AcceptMsg) =>
            context.log.info(s"received in ${containerUrl.path} message $msg")
            import BasicContainer.PostCreation
            msg match
-            case wd: WannaDo =>
+            case WannaDo(msg, lastSeenAcl) =>
+              // todo: is this the best actor context?
               given ac: ActorContext[ScriptMsg[?] | Do] =
                 context.context.asInstanceOf[ActorContext[ScriptMsg[?] | Do]]
-              Guard.Authorize(wd.msg, aclUri)
+                // we need to work out what the aclUri is from the lastSeenAcl
+              Guard.Authorize(msg, lastSeenAcl, aclUri)
               Behaviors.same
             case script: ScriptMsg[?] =>
               import script.given
@@ -439,8 +463,9 @@ class BasicContainer private (
                case Get(url, k) =>
                  // 1. todo: check if we have cached version, if so continue with that
                  // 2. if not, build it from result of plain HTTP request
+                 import _root_.run.cosy.RDF.{*, given}
                  import cats.free.Free
-                 import _root_.run.cosy.RDF.{given, *}
+                 given ex: ExecutionContext = context.context.system.executionContext
                  // todo: we should not have to call resume here as we set everything up for plain
                  SolidCmd.getFromPlain(url, k).resume match
                   case Left(plain @ Plain(req, k)) => run(plain, agent, replyTo)
@@ -459,15 +484,17 @@ class BasicContainer private (
               // reply that done
               create.cmd.respondWith(HttpResponse(
                 Created,
-                Location(
-                  containerUrl.withPath(containerUrl.path / "")
-                ) :: LinkHeaders :: AllowHeader :: Nil
+                Location(containerUrl.withPath(containerUrl.path / ""))
+                  :: Link(LDPLinkHeaders ::: BasicContainer.aclLinks(aclUri, effectiveAcl))
+                  :: AllowHeader :: Nil
               ))
               Behaviors.same
             case routeMsg: RouteMsg => routeHttpReq(routeMsg)
             case ChildTerminated(name) =>
-              reg.removePath(containerUrl.path / name)
-              new Dir(contains - name, counters).start
+              po.removePath(containerUrl.copy(path = containerUrl.path / name))
+              // todo: what if the child terminated is the AC Actor? say it is deleted? Then we would need
+              //   to find the parent actor for the ACL before starting it....
+              new Dir(contains - name, counters, effectiveAcl).start
         }.receiveSignal {
           case (_, signal) if signal == PreRestart || signal == PostStop =>
             counters.foreach { (name, int) =>
@@ -489,12 +516,13 @@ class BasicContainer private (
         */
       def getRef(name: String): Option[(Ref, Dir)] =
          context.log.info(s"in <$dirPath>.getRef($name)")
-         contains.get(name).map { (v: Refs) =>
+         contains.get(name).flatMap { (v: Refs) =>
            v match
-            case ref: Ref => (ref, Dir.this)
+            case ref: Ref => Some((ref, Dir.this))
             case fa: ActorPath =>
-              val r = context.spawn(fa, urlFor(name))
-              (r, new Dir(contains + (name -> r), counters))
+              context.spawn(fa, urlFor(name), effectiveAcl).map { r =>
+                (r, new Dir(contains + (name -> r), counters, effectiveAcl))
+              }
          }.orElse {
            import java.io.IOException
            import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -503,39 +531,43 @@ class BasicContainer private (
            context.log.info(s"resolved <$dirPath>.resolve($name)=$path")
            Attributes.actorPath(path) match
             case Success(att: APath) =>
-              val r: Ref = context.spawn(att, urlFor(name))
-              Some((r, new Dir(contains + (name -> r), counters)))
+              context.spawn(att, urlFor(name), effectiveAcl).map { r =>
+                (r, new Dir(contains + (name -> r), counters, effectiveAcl))
+              }
             case Failure(err) =>
+              import context.log
               err match
                case e: UnsupportedOperationException =>
-                 context.log.error(
-                   s"Cannot get BasicFileAttributes! JDK misconfigured on request <$path>",
-                   e
-                 )
+                 log.error(s"Cannot get BasicFileAttributes! JDK misconfigured on request <$path>",
+                   e)
                  None
                case e: IOException =>
-                 context.log.info(s"IOException trying to get <$path>", e)
+                 log.info(s"IOException trying to get <$path>", e)
                  None
                case e: SecurityException =>
-                 context.log.warn(
-                   s"Security Exception on searching for attributes on <$path>.",
-                   e
-                 )
+                 log.warn(s"Security Exception on searching for attributes on <$path>.", e)
                  None
          }
       end getRef
 
       // state monad	fn. create symlink to new file (we don't have an actor for it yet)
       def createSymLink(linkName: String, linkTo: String): Try[(RRef, Dir)] =
-        Attributes.createLink(dirPath, linkName, linkTo).map { att =>
-           val ref = context.spawnSymLink(att, urlFor(linkName))
-           (ref, new Dir(contains + (linkName -> ref), counters))
+        Attributes.createSymLink(dirPath, linkName, linkTo).map { att =>
+           val ref = context.spawnSymLink(att, urlFor(linkName), effectiveAcl)
+           (ref, new Dir(contains + (linkName -> ref), counters, effectiveAcl))
+        }
+
+      // state monad	fn. create symlink to new file (we don't have an actor for it yet)
+      def createServerManaged(linkName: String, linkTo: String): Try[(SMRef, Dir)] =
+        Attributes.createServerManaged(dirPath, linkName, linkTo).map { att =>
+           val ref = context.spawnManaged(att, urlFor(linkName))
+           (ref, new Dir(contains + (linkName -> ref), counters, Root(aclUri)))
         }
 
       def createDir(newDirName: String): Try[(CRef, Dir)] =
         Attributes.createDir(dirPath, newDirName).map { att =>
-           val ref = context.spawnDir(att, urlFor(newDirName))
-           (ref, new Dir(contains + (newDirName -> ref), counters))
+           val ref = context.spawnDir(att, urlFor(newDirName), effectiveAcl)
+           (ref, new Dir(contains + (newDirName -> ref), counters, effectiveAcl))
         }
 
       /** state monad fn - return counter for given base name so that one can create the next name
@@ -543,7 +575,7 @@ class BasicContainer private (
         */
       def nextCounterFor(baseName: String): (Int, Dir) =
          val newcounter: Int = findSiblingCount(baseName) + 1
-         (newcounter, new Dir(contains, counters + (baseName -> newcounter)))
+         (newcounter, new Dir(contains, counters + (baseName -> newcounter), effectiveAcl))
 
       def countFile(countFileRoot: String): java.io.File =
         dirPath.resolve(countFileRoot + ".count").toFile
@@ -551,24 +583,24 @@ class BasicContainer private (
       /** You need to update the counter if you use it. This suggests one should have monadic
         * interface on the config data
         */
-      def findSiblingCount(countFileRoot: String): Int =
-        counters.get(countFileRoot).getOrElse {
-          val cf = countFile(countFileRoot)
-          Using(new BufferedReader(new FileReader(cf))) { (reader: BufferedReader) =>
-            reader.readLine().toInt
-          }.recover {
-            case e: java.io.FileNotFoundException => cf.createNewFile(); 1
-            case e: java.io.IOException => context.log.warn(s"Can't read count file <$cf>", e); 1
-            case e: java.lang.NumberFormatException =>
-              context.log.warn(s"error parsing counter in <$cf>"); 1
-          }.getOrElse(0)
-        }
+      private def findSiblingCount(countFileRoot: String): Int =
+        counters.getOrElse(countFileRoot, {
+            val cf = countFile(countFileRoot)
+            Using(new BufferedReader(new FileReader(cf))) { (reader: BufferedReader) =>
+              reader.readLine().toInt
+            }.recover {
+              case e: java.io.FileNotFoundException => cf.createNewFile(); 1
+              case e: java.io.IOException => context.log.warn(s"Can't read count file <$cf>", e); 1
+              case e: java.lang.NumberFormatException =>
+                context.log.warn(s"error parsing counter in <$cf>"); 1
+            }.getOrElse(0)
+          })
 
       // todo: save such info to disk on shutdown
       def writeSiblingCount(countFileRoot: String, count: Int): Counter =
         counters + (countFileRoot -> (count + 1))
 
-      def saveSiblingsCountFor(name: String, count: Int): Unit =
+      private def saveSiblingsCountFor(name: String, count: Int): Unit =
         Using(new BufferedWriter(new FileWriter(countFile(name)))) { (writer: BufferedWriter) =>
           writer.write(count.toString)
         } recover {
@@ -603,21 +635,20 @@ class BasicContainer private (
         * up later.
         */
       protected def run[T](plainCmd: Plain[Script[T]], agent: Agent, replyTo: ActorRef[T])(using
-          reg: ResourceRegistry,
           mat: Materializer,
-          ec: ExecutionContext,
           fscm: cats.Functor[SolidCmd]
       ): Behavior[AcceptMsg] =
          context.log.info(s"in run received msg $plainCmd")
-         import akka.stream.alpakka.file.scaladsl.Directory
          import BasicContainer.ttlPrefix
          import RDFMediaTypes.`text/turtle`
+         import akka.stream.alpakka.file.scaladsl.Directory
          import plainCmd.req
          import req.*
          // Here I just rebuild the CmdMessage, for convenience
          // todo: see above
          val pcmd: CmdMessage[T] = CmdMessage[T](plainCmd, agent, replyTo)
-         if !uri.path.endsWithSlash then
+
+         if req.method != PUT && !uri.path.endsWithSlash then
             // this should have been dealt with by parent container, which should have tried conneg.
             val ldpcUri = uri.withPath(uri.path / "")
             pcmd.respondWith(HttpResponse(
@@ -625,137 +656,307 @@ class BasicContainer private (
               Seq(Location(ldpcUri)),
               entity = s"This resource is now a container at ${uri}"
             ))
+            return Behaviors.same
+
+         method match
+          case OPTIONS =>
+            pcmd.respondWith(HttpResponse( // todo, add more
+              NoContent,
+              `Accept-Post` :: Link(
+                LDPLinkHeaders ::: aclLinks(uri, effectiveAcl)
+              ) :: AllowHeader :: Nil
+            ))
             Behaviors.same
-         else
-            method match
-             case OPTIONS =>
-               pcmd.respondWith(HttpResponse( // todo, add more
-                 NoContent,
-                 `Accept-Post` :: AllowHeader :: Nil
-               ))
-               Behaviors.same
-             case GET | HEAD => // return visible contents of directory
-               // todo: I don't think this takes account of priorities. Check
-               if req.headers[Accept].exists(_.mediaRanges.exists(_.matches(`text/turtle`))) then
-                  pcmd.respondWith(HttpResponse(
-                    OK,
-                    aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
-                    HttpEntity(
-                      `text/turtle`.toContentType,
-                      Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_)).map(s =>
-                        ByteString(s)
-                      )
-                    )
-                  ))
-               else
-                  pcmd.respondWith(HttpResponse(
-                    UnsupportedMediaType,
-                    aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
-                    HttpEntity("We only support text/turtle media type at the moment")
-                  ))
-               Behaviors.same
-             case POST => // create resource
-               // todo: create sub container for LDPC Post
-               import java.time.Clock
-               import BasicContainer.{
-                 createLinkNames,
-                 filterLDPTypeLinks,
-                 createNewResourceName,
-                 ldpBC,
-                 ldpr
-               }
-               import BasicContainer.{given Clock}
-               val types = filterLDPTypeLinks(req.headers[Link])
-               if types.contains(ldpBC) then
-                  // todo: should one also parse the body first to check that it is well formed? Or should that
-                  //   be left to the created actor - which may have to delete itself if not.
-                  val newDirName = createNewResourceName(plainCmd.req)
-                  val response: Try[(CRef, Dir)] = createDir(newDirName).recoverWith {
-                    case e: FileAlreadyExistsException => // this is the pattern of a state monad!
-                      val (nextId, newDir) = nextCounterFor(newDirName)
-                      val nextDirName      = newDirName + "_" + nextId
-                      newDir.createDir(nextDirName)
-                  }
-                  response match
-                   case Success((cref, dir)) =>
-                     cref.actor ! PostCreation(cref.att.path, pcmd)
-                     dir.start
-                   case Failure(e) =>
-                     pcmd.respondWith(HttpResponse(
-                       InternalServerError,
-                       Seq(),
-                       HttpEntity(
-                         `text/x-java-source`.withCharset(HttpCharsets.`UTF-8`),
-                         e.toString
-                       )
-                     ))
-                     Behaviors.same
-               else // create resource
-                  val (linkName: String, linkTo: String) = createLinkNames(plainCmd.req)
-                  val response: Try[(RRef, Dir)] = createSymLink(linkName, linkTo).recoverWith {
-                    case e: FileAlreadyExistsException => // this is the pattern of a state monad!
-                      val (nextId, newDir) = nextCounterFor(linkName)
-                      val nextLinkName     = linkName + "_" + nextId
-                      newDir.createSymLink(
-                        nextLinkName,
-                        linkToName(nextLinkName, entity.contentType)
-                      )
-                  }
-                  response match
-                   case Success((ref, dir)) =>
-                     ref.actor ! PostCreation(dirPath.resolve(ref.att.to), pcmd)
-                     dir.start
-                   case Failure(e) =>
-                     pcmd.respondWith(HttpResponse(
-                       InternalServerError,
-                       Seq(),
-                       HttpEntity(
-                         `text/x-java-source`.withCharset(HttpCharsets.`UTF-8`),
-                         e.toString
-                       )
-                     ))
-                     Behaviors.same
-               end if
-             case DELETE =>
-               if dirIsEmpty then
-                  Files.move(
-                    dirPath,
-                    dirPath.resolveSibling("" + dirPath.getFileName() + ".archive")
-                  )
-                  pcmd.respondWith(HttpResponse(NoContent, Seq(), entity = s"resource deleted"))
-                  Behaviors.stopped
-               else
-                  pcmd.respondWith(HttpResponse(
-                    Conflict,
-                    aclHeader :: LinkHeaders :: `Accept-Post` :: AllowHeader :: Nil,
-                    entity = HttpEntity(
-                      `text/turtle`.toContentType,
-                      Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_))
-                        .map(s => ByteString(s))
-                    )
-                  ))
-                  Behaviors.same
-             // todo: create new PUT request and forward to new actor?
-             // or just save the content to the file?
-             case _ =>
+          case GET | HEAD => // return visible contents of directory
+            // oops, should this be the case for HEAD?
+            // todo: I don't think this takes account of priorities. Check
+            if req.headers[Accept].exists(_.mediaRanges.exists(_.matches(`text/turtle`))) then
                pcmd.respondWith(HttpResponse(
-                 NotImplemented,
-                 Seq(),
-                 entity = s"have not implemented  ${plainCmd.req.method} for ${plainCmd.req.uri}"
+                 OK,
+                 Link(LDPLinkHeaders ::: aclLinks(aclUri, effectiveAcl)) :: `Accept-Post`
+                   :: AllowHeader :: Nil,
+                 HttpEntity(
+                   `text/turtle`.toContentType,
+                   Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_)).map(s =>
+                     ByteString(s)
+                   )
+                 )
+               ))
+            else
+               pcmd.respondWith(HttpResponse(
+                 UnsupportedMediaType,
+                 Link(LDPLinkHeaders ::: aclLinks(aclUri, effectiveAcl))
+                   :: `Accept-Post` :: AllowHeader :: Nil,
+                 HttpEntity("We only support text/turtle media type at the moment")
+               ))
+            Behaviors.same
+          case POST =>
+            // todo: this should requre the / at end of path
+            runPOST(req, plainCmd, pcmd)
+          case PUT =>
+            // if we have the url of the LDPC container we don't yet know what to do
+            // if we have a URL that continues the LDPC container then
+            runPUT(req, pcmd)
+          case DELETE =>
+            // must be LDPC container URL or redirect
+            if dirIsEmpty then
+               Files.move(
+                 dirPath,
+                 dirPath.resolveSibling("" + dirPath.getFileName() + ".archive")
+               )
+               pcmd.respondWith(HttpResponse(NoContent, Seq(), entity = s"resource deleted"))
+               Behaviors.stopped
+            else
+               pcmd.respondWith(HttpResponse(
+                 Conflict,
+                 Link(LDPLinkHeaders ::: aclLinks(aclUri, effectiveAcl))
+                   :: `Accept-Post` :: AllowHeader :: EffectiveAcl.toList,
+                 entity = HttpEntity(
+                   `text/turtle`.toContentType,
+                   Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_))
+                     .map(s => ByteString(s))
+                 )
                ))
                Behaviors.same
+          // todo: create new PUT request and forward to new actor?
+          // or just save the content to the file?
+          case _ =>
+            pcmd.respondWith(HttpResponse(
+              NotImplemented,
+              Seq(),
+              entity = s"have not implemented  ${plainCmd.req.method} for ${plainCmd.req.uri}"
+            ))
+            Behaviors.same
       end run
 
-      protected def routeHttpReq(msg: RouteMsg): Behavior[AcceptMsg] =
-        msg.nextRoute match
-         case doit @ WannaDo(_) =>
-           doit.msg.target.fileName match
-            case None                   => forwardToContainer(msg.nextSegment, doit)
-            case Some(s) if s(0) == '.' => forwardToContainer(msg.nextSegment, doit)
-            case _                      => forwardMsgToResourceActor(msg.nextSegment, doit)
-         case route: Route => forwardToContainer(msg.nextSegment, route)
+      private def runPOST[T](
+          req: HttpRequest,
+          plainCmd: Plain[Script[T]],
+          pcmd: CmdMessage[T]
+      ): Behavior[AcceptMsg] =
+         // todo: create sub container for LDPC Post
+         import BasicContainer.clock
+         val types = filterLDPTypeLinks(req.headers[Link])
+         if types.contains(ldpBC) then
+            // todo: should one also parse the body first to check that it is well formed? Or should that
+            //   be left to the created actor - which may have to delete itself if not.
+            val newDirName = createNewResourceName(plainCmd.req)
+            runMkLDPC(pcmd, newDirName)
+         else // create resource
+            val (linkName: String, linkTo: String) = createLinkNames(plainCmd.req)
+            runMkLDPR(pcmd, linkName, linkTo, req.entity.contentType)
+         end if
+      end runPOST
 
-      def forwardToContainer(name: String, route: Route): Behavior[AcceptMsg] =
+      private def runPUT[T](
+          req: HttpRequest,
+          pcmd: CmdMessage[T]
+      ): Behavior[AcceptMsg] =
+         def err(tp: ServerError, msg: String): Behavior[AcceptMsg] =
+            pcmd.respondWith(HttpResponse(
+              NotImplemented,
+              Seq(),
+              HttpEntity(
+                `text/plain`.withCharset(HttpCharsets.`UTF-8`),
+                "We have not yet implemented PUT on the LDP Container. "
+              )
+            ))
+            Behaviors.same
+         end err
+         import Uri.Path.*
+         containerUrl.path.diff(req.uri.path) match
+          case None => err(InternalServerError,
+              s"Somehow the actor for <$containerUrl> received a message for <${req.uri}>")
+          case Some(Empty) =>
+            val ldpcUri = containerUrl.withSlash
+            pcmd.respondWith(HttpResponse(
+              MovedPermanently,
+              Seq(Location(ldpcUri)),
+              entity = s"This resource is now a container at ${ldpcUri}"
+            ))
+            Behaviors.same
+          case Some(Slash(Empty)) => err(NotImplemented,
+              "We have not yet implemented PUT on the LDP Container.")
+          case Some(Slash(Segment(linkName, Empty))) =>
+            runPUTFile(req, pcmd, linkName)
+          case Some(Slash(segment)) =>
+            // we need to make all the intermediate directories
+            Try {
+              val (dirs, fileOpt) = segment.components
+              val newDirPath      = dirPath.resolve(Path.of(dirs.head, dirs.tail*))
+              val newDir          = Files.createDirectories(newDirPath)
+//              val linkTo             = linkToName(file, req.entity.contentType)
+//              val symlink = Files.createSymbolicLink(newDir.resolve(file), Path.of(linkTo))
+              context.context.log.info(s"===>> created dir: $newDir ")
+//              context.context.log.info(s"===>> created link from  $symlink ")
+              NonEmptyList(dirs.head, dirs.tail ::: fileOpt.toList)
+            } match
+             case Success(remainingPath) =>
+               // todo: here we send the command along as a webserver agent to avoid having to
+               //   reauthenticate. But we may very well want to later keep track (in the metadata file or
+               //   somwhere on who sent the message. In that case we would need a new Do(..., with a Path).
+               //   But now right now as that would take too much time.
+               val msg = RouteMsg(remainingPath, pcmd.copy(from = WebServerAgent), effectiveAcl)
+               context.context.self ! msg
+               context.context.log.info(s"===> sent message $msg")
+               Behaviors.same
+             case Failure(e) =>
+               pcmd.respondWith(HttpResponse(
+                 InternalServerError,
+                 Seq(),
+                 HttpEntity(
+                   `text/x-java-source`.withCharset(HttpCharsets.`UTF-8`),
+                   e.toString
+                 )
+               ))
+               Behaviors.same
+          case _ => err(NotImplemented,
+              s"We don't know how to PUT on <${req.uri}>")
+
+//         val types = filterLDPTypeLinks(req.headers[Link])
+//         if types.contains(ldpBC) then
+//            // todo: should one also parse the body first to check that it is well formed? Or should that
+//            //   be left to the created actor - which may have to delete itself if not.
+//            val newDirName = createNewResourceName(plainCmd.req)
+//            runMkLDPC(pcmd, newDirName)
+//         else // create resource
+//            val (linkName: String, linkTo: String) = createLinkNames(plainCmd.req)
+//            runMkLDPR(pcmd, linkName, linkTo, req.entity.contentType)
+//         end if
+      end runPUT
+
+      private def runPUTFile[T](req: HttpRequest, pcmd: CmdMessage[T], linkName: String) =
+//         val types  = filterLDPTypeLinks(req.headers[Link])
+         val linkTo = linkToName(linkName, req.entity.contentType)
+         if linkName == ".acl"
+         then
+            // todo: also require the LDPR header?
+            // todo: we should also test the RDF passed for compliance
+            createServerManaged(linkName, linkTo) match
+             case Success((ref, dir)) =>
+               ref.actor ! PostCreation(dirPath.resolve(ref.att.to), pcmd)
+               // we need to also look at case where the acl creation fails.
+               // it would be better for this message to be sent when the PUT if finished
+               SolidPostOffice(context.context.system).addActorRef(containerUrl,
+                 context.context.self, true)
+               dir.start
+             case Failure(e) =>
+               pcmd.respondWith(HttpResponse(
+                 InternalServerError,
+                 Seq(),
+                 HttpEntity(
+                   `text/x-java-source`.withCharset(HttpCharsets.`UTF-8`),
+                   e.toString
+                 )
+               ))
+               Behaviors.same
+         else
+            createSymLink(linkName, linkTo) match
+             case Success((ref, dir)) =>
+               ref.actor ! PostCreation(dirPath.resolve(ref.att.to), pcmd)
+               dir.start
+             case Failure(e) =>
+               pcmd.respondWith(HttpResponse(
+                 InternalServerError,
+                 Seq(),
+                 HttpEntity(
+                   `text/x-java-source`.withCharset(HttpCharsets.`UTF-8`),
+                   e.toString
+                 )
+               ))
+               Behaviors.same
+
+      /** this works for POST, but does not work for PUT because we start with trying a number of
+        * different names
+        */
+      private def runMkLDPR[T](
+          pcmd: CmdMessage[T],
+          linkName: String,
+          linkTo: String,
+          contentType: model.ContentType
+      ): Behavior[AcceptMsg] =
+         val response: Try[(RRef, Dir)] = createSymLink(linkName, linkTo).recoverWith {
+           case e: FileAlreadyExistsException => // this is the pattern of a state monad!
+             val (nextId, newDir) = nextCounterFor(linkName)
+             val nextLinkName     = linkName + "_" + nextId
+             newDir.createSymLink(
+               nextLinkName,
+               linkToName(nextLinkName, contentType)
+             )
+         }
+         response match
+          case Success((ref, dir)) =>
+            ref.actor ! PostCreation(dirPath.resolve(ref.att.to), pcmd)
+            dir.start
+          case Failure(e) =>
+            pcmd.respondWith(HttpResponse(
+              InternalServerError,
+              Seq(),
+              HttpEntity(
+                `text/x-java-source`.withCharset(HttpCharsets.`UTF-8`),
+                e.toString
+              )
+            ))
+            Behaviors.same
+      end runMkLDPR
+
+      private def runMkLDPC[T](pcmd: CmdMessage[T], newDirName: String): Behavior[AcceptMsg] =
+         val response: Try[(CRef, Dir)] = createDir(newDirName).recoverWith {
+           case e: FileAlreadyExistsException => // this is the pattern of a state monad!
+             val (nextId, newDir) = nextCounterFor(newDirName)
+             val nextDirName      = newDirName + "_" + nextId
+             newDir.createDir(nextDirName)
+         }
+         response match
+          case Success((cref, dir)) =>
+            cref.actor ! PostCreation(cref.att.path, pcmd)
+            dir.start
+          case Failure(e) =>
+            pcmd.respondWith(HttpResponse(
+              InternalServerError,
+              Seq(),
+              HttpEntity(
+                `text/x-java-source`.withCharset(HttpCharsets.`UTF-8`),
+                e.toString
+              )
+            ))
+            Behaviors.same
+      end runMkLDPC
+
+      /** all RouteMsg are passed through here and forwarded or changed to a WannaDo with the last
+        * seen container set. The returned behavior is potentially an updated Dir if either
+        * ldp:contains actors have changed or if we can work out that there is a new default ACL to
+        * point to.
+        */
+      protected def routeHttpReq(msg: RouteMsg): Behavior[AcceptMsg] =
+         // the second projection is true if there is a change to the current dir lastMessage state
+         val newAcInfo = effectiveAcinfo(msg.lastSeenAC, effectiveAcl, aclUri)
+         val isNew     = newAcInfo != effectiveAcl
+
+         val newDir: Option[Dir] = msg.nextRoute(newAcInfo) match
+          case doit: WannaDo => doit.msg.target.fileName match
+             case None => forwardToContainer(msg.nextSegment, doit)
+             case _    => forwardMsgToResourceActor(msg.nextSegment, doit)
+          case route: Route => forwardToContainer(msg.nextSegment, route)
+
+         def updateDir(d: Dir): Dir =
+           if isNew then d.copy(effectiveAcl = newAcInfo) else d
+
+         newDir match
+          case None if isNew => updateDir(this).start
+          case None          => Behaviors.same
+          case Some(dir)     => updateDir(dir).start
+
+      end routeHttpReq
+
+      /** forward as a side-effect the Route, which will either respond to the client with the HTTP
+        * answer or forward the command to one if the child actors. note: the route message has been
+        * update with the default acl if known
+        * @return
+        *   None if the behavior remains the same, Some(dir) if we should use update the static
+        *   information for this directory
+        */
+      private def forwardToContainer(name: String, route: Route): Option[Dir] =
          context.log.info(s"in forwardToContainer($name, $route)")
          if name.indexOf('.') > 0 then
             route.msg.respondWith(HttpResponse(
@@ -764,16 +965,14 @@ class BasicContainer private (
                 "This Solid server serves no resources with a '.' char in path segments (except for the last `file` segment)."
               )
             ))
-            Behaviors.same
+            None
          else
             getRef(name) match
              case Some(x, dir) =>
                x match
                 case CRef(att, actor) => actor ! route
-                case SMRef(
-                      att,
-                      actor
-                    ) => // server managed resource, this is not a Container, but is "owned" by this container.
+                // server managed resource, this is not a Container, but is "owned" by this container.
+                case SMRef(att, actor) =>
                   context.log.info(s"we have a Server Managed Resource SMRef($att, $actor)")
                   route match
                    case wd: WannaDo => // we pass on to the server managed actor
@@ -784,13 +983,13 @@ class BasicContainer private (
                        "We should never arrive at this point!! Look at how we got here"
                      )
                      r.msg.respondWith(HttpResponse(
-                       InternalServerError,
+                       NotFound,
                        Seq(),
                        s"Resource with URI ${r.msg.target} does not exist"
                      ))
                 case RRef(att, actor) => // there is no container, so redirect to resource
                   route match
-                   case WannaDo(cmd) => // we're at the path end, so we can redirect
+                   case WannaDo(cmd, lastSeenAcl) => // we're at the path end, so we can redirect
                      val redirectTo = cmd.target.withoutSlash
                      route.msg.redirectTo(
                        redirectTo,
@@ -802,16 +1001,24 @@ class BasicContainer private (
                        Seq(),
                        s"Resource with URI ${r.msg.target} does not exist"
                      ))
-               dir.start
+               Some(dir)
              case None =>
-               route.msg.respondWith(
-                 HttpResponse(
-                   NotFound,
-                   entity =
-                     HttpEntity(s"""Resource with URI ${route.msg.target} does not exist.""")
-                 )
-               )
-               Behaviors.same
+               route match
+                // note the 2 PUT cases could have been dealt with here too, but would require to have the context
+                case WannaDo(CmdMessage(p: Plain[?], _, _), lastSeen) if p.req.method == PUT =>
+                  // we send request to make a dir that does not yet exist to the current actor
+                  context.context.self ! route
+                case RouteMsg(_, CmdMessage(p: Plain[?], _, _), lastSeen) if p.req.method == PUT =>
+                  // we are going to have to make a few dirs
+                  context.context.self ! WannaDo(route.msg, lastSeen)
+                case _ => route.msg.respondWith(
+                    HttpResponse(
+                      NotFound,
+                      entity =
+                        HttpEntity(s"""Resource with URI ${route.msg.target} does not exist.""")
+                    )
+                  )
+               None
       end forwardToContainer
 
       /** Forward message to child resource (not container)
@@ -820,9 +1027,9 @@ class BasicContainer private (
         * @param wannaDo
         *   the HttpRequest
         * @return
-        *   A new Behavior, updated if a new child actor is created.
+        *   a new Directory if information about the Dir has evolved or None
         */
-      protected def forwardMsgToResourceActor(name: String, wannaDo: WannaDo): Behavior[AcceptMsg] =
+      private def forwardMsgToResourceActor(name: String, wannaDo: WannaDo): Option[Dir] =
          context.log.info(s"in  forwardMsgToResourceActor($name, $wannaDo")
          val dotLessName = actorNameFor(name)
          getRef(dotLessName) match
@@ -835,24 +1042,28 @@ class BasicContainer private (
                     HttpResponse(MovedPermanently, Seq(Location(uri.withPath(uri.path / ""))))
                  else HttpResponse(NotFound)
                }
-             case RRef(_, actor) => actor ! wannaDo
-             case SMRef(
-                   att,
-                   actor
-                 ) => // server managed resource, this is not a Container, but is "owned" by this container.
+             case RRef(_, actor)    => actor ! wannaDo
+             case SMRef(att, actor) =>
+               // server managed resource, this is not a Container, but is "owned" by this container.
                context.log.info(s"we have a Server Managed Resource SMRef($att, $actor)")
                actor ! wannaDo
-            dir.start
+            Some(dir)
           case None =>
-            wannaDo.msg.respondWith(HttpResponse(
-              NotFound,
-              entity = HttpEntity(
-                `text/plain`.withCharset(`UTF-8`),
-                s"""Resource with URI ${wannaDo.msg.target} does not exist.
-                   |Try posting to <${containerUrl}> container first.""".stripMargin
-              )
-            ))
-            Behaviors.same
+            wannaDo match
+             case WannaDo(CmdMessage(p: Plain[?], _, _), _) if p.req.method == PUT =>
+               context.context.self ! wannaDo
+             case _ =>
+               //    so that this LDPC can create the resource and then the actor like with a POST
+               //    that only makes sense after we have tested that the dir does not exist
+               wannaDo.msg.respondWith(HttpResponse(
+                 NotFound,
+                 entity = HttpEntity(
+                   `text/plain`.withCharset(`UTF-8`),
+                   s"""Resource with URI ${wannaDo.msg.target} does not exist.
+                      |Try posting to <${containerUrl}> container first.""".stripMargin
+                 )
+               ))
+            None
       end forwardMsgToResourceActor
 
       /** Given a request for resource `name` find out what its root is. We will just take the name

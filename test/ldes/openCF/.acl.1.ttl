@@ -1,0 +1,14 @@
+@prefix wac: <http://www.w3.org/ns/auth/acl#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+<#R1> a wac:Authorization; 
+   wac:mode wac:Control;
+   wac:agent <https://bblfish.net/people/henry/card#me>;
+   wac:default <.> .
+
+<#R2> a wac:Authorization; 
+   wac:mode wac:Read;
+   wac:agentClass foaf:Agent;
+   wac:accessTo <.> ;
+   wac:default <.> .
+
