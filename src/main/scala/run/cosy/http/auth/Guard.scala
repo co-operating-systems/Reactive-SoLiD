@@ -173,16 +173,15 @@ object Guard:
      * @param msg
      *   the message to authorize
      * @param msgACL
-     *   the closest default ACL from the message if known
-     * @param aclUri
-     *   the URL of the acl that allows access
+     *   the closest default ACL from the message if known, or the effective acl
+    * @param aclUri the direct act for the request resource
      */
    def Authorize[T](msg: CmdMessage[T], msgACL: ACInfo, aclUri: Uri)(using
        context: ActorContext[ScriptMsg[?] | Do]
    ): Unit =
       // todo!!: set timeout in config!!
       given timeOut: akka.util.Timeout = akka.util.Timeout(Duration(3, TimeUnit.SECONDS))
-      context.log.info(s"Authorize(WannaDo($msg), <$aclUri>)")
+      context.log.info(s"Authorize(WannaDo($msg), <$msgACL>)")
       import SolidCmd.{Get, Wait}
       import run.cosy.http.auth.Guard.*
       import cats.free.Free.pure
@@ -192,6 +191,8 @@ object Guard:
          msg.commands match
           case p: Plain[?] =>
             import msg.given
+            val effectiveAcl = msgACL.aclUri
+
 // todo: this is an optimisation to send the message directly to the ACL actor,
 //    but it requires getting the acl ActorRef be of a type which accepts ScriptMsg[Boolean]
 //    containers do that, but we'd need to check if
@@ -208,12 +209,14 @@ object Guard:
               context.self, // todo: see above, should be able to send directly to destination
               ref =>
                 ScriptMsg[Boolean](
-                  authorizeScript(msgACL.acl, msg.from, msg.target, p.req.method),
+                  authorizeScript(effectiveAcl, msg.from, msg.target, p.req.method),
                   WebServerAgent,
                   ref
                 )
             ) {
-              case Success(true) => Do(msg)
+              case Success(true) =>
+                context.log.info(s"authorized ${msg.target} by user ${msg.from} ")
+                Do(msg)
               case Success(false) =>
                 context.log.info(s"failed to authorize ${msg.target} ")
                 msg.respondWithScr(HttpResponse(

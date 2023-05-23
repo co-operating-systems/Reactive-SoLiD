@@ -55,12 +55,11 @@ object Solid:
         // todo: replace names with .ac
 
         given system: ActorSystem[Nothing] = ctx.system
-        val defaultAcl                     = uri.copy(path = uri.path ?/ ".acl")
         val rootRef: ActorRef[AcceptMsg] = ctx.spawn(
-          BasicContainer(uri.withoutSlash, fpath, Root(defaultAcl)),
+          BasicContainer(uri.withoutSlash, fpath, Root(uri.withSlash)),
           "solid"
         )
-        SolidPostOffice(system).addRoot(uri, rootRef)
+        SolidPostOffice(system).addRoot(uri.withSlash, rootRef)
         // todo: why this and given reg?
         val solid                  = new Solid(uri, fpath)
         given timeout: Scheduler   = system.scheduler
@@ -243,13 +242,6 @@ class Solid(
    def routeLdp(agent: Agent = new Anonymous()): Route = (reqc: RequestContext) =>
      // todo: the path here supposes that the root container is at the root of the web server
      //    we may want more flexibility here...
-
-// todo: remove this commented code. Just there until commit
-//      def routeWith(replyTo: ActorRef[HttpResponse]): LDP.Route = LDP.RouteMsg(
-//        NonEmptyList("/", remaining),
-//        LDP.CmdMessage(SolidCmd.plain(reqc.request), agent, replyTo),
-//        acDir
-//      ).nextRoute(Root(baseUri.copy(path = Uri.Path("/.acl"))))
 
      // todo: do we need the nextRoute(...) added above?
      SolidPostOffice(sys).ask[HttpResponse](SolidCmd.plain(reqc.request), agent)

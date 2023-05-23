@@ -19,6 +19,7 @@ import akka.stream.scaladsl.FileIO
 import run.cosy.ldp.{ACInfo, SolidPostOffice}
 import run.cosy.ldp.ACInfo.ACContainer
 import run.cosy.ldp.Messages.*
+import run.cosy.http.util.UriX.*
 import run.cosy.ldp.fs.BasicContainer.{PostCreation, aclLinks}
 import run.cosy.ldp.fs.Resource.{AcceptMsg, StateSaved, extension, headersFor}
 
@@ -60,13 +61,17 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
    import run.cosy.http.util.UriX.sibling
    val aclUri = uri.sibling(aclName)
 
+   //todo: this actor needs to act like a container and receive cancelation messages from the acr
+   //  to reset it
    var aclActorDB: Option[ActorRef[AcceptMsg]] = None
+
+   def aclLinks(acl: Uri, active: ACInfo): List[LinkValue]
 
    def aclActor(create: Boolean): Option[ActorRef[AcceptMsg]] =
       if aclActorDB.isEmpty && create then
          val acn = aclName
          aclActorDB =
-           Some(context.spawn(ACResource(aclUri, linkPath.resolveSibling(acn), acn), acn))
+           Some(context.spawn(ACResource(uri, aclUri, linkPath.resolveSibling(acn), aclName, false), acn))
       aclActorDB
 
    given ac: ActorContext[ScriptMsg[?] | Do] = context.asInstanceOf[ActorContext[ScriptMsg[?] | Do]]
@@ -348,14 +353,16 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                   // todo: the first !dotLinkName.isACR requirement would not exist if this code were not shared.
                   //  should it be shared?
                   aclInfo match
-                   case ACtrlRef(_, actorRef) => actorRef ! msg
+                   case ACtrlRef(_, _, actorRef,_) => actorRef ! msg
                    case _                     =>
                      // todo: we have to check if the message is one to create the ACR. If it is
                      //  (and if it is allowed?) then we need to create the actor, and the resource
                      //  and forward the msg and change the behavior
                      cmdmsg.respondWith(HttpResponse(StatusCodes.NotFound))
                else
-                  Guard.Authorize(cmdmsg, containerAcl, aclUri)
+                  if containerAcl.container.ancestorOf(aclInfo.container) then
+                    Guard.Authorize(cmdmsg, aclInfo, aclUri)
+                  else Guard.Authorize(cmdmsg, containerAcl, aclUri)
                Behaviors.same
              case Do(cmdmsg @ CmdMessage(cmd, agent, replyTo)) =>
                import cmdmsg.given

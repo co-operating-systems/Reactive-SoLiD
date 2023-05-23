@@ -30,7 +30,7 @@ import run.cosy.http.{FileExtensions, RDFMediaTypes, RdfParser}
 import run.cosy.ldp.ACInfo
 import run.cosy.ldp.Messages.*
 import run.cosy.ldp.SolidCmd.Plain
-import run.cosy.ldp.fs.BasicContainer.{LDPLinkHeaders, PostCreation, aclLinks}
+import run.cosy.ldp.fs.BasicContainer.{LDPLinkHeaders, PostCreation}
 import run.cosy.ldp.fs.Resource.{StateSaved, connegNamesFor, extension, headersFor}
 import run.cosy.ldp.{ResourceRegistry, fs}
 
@@ -62,8 +62,6 @@ object Resource:
        //			context.log.info("started LDPR actor at " + rUri.path)
        new Resource(rUri, linkName, context).behavior(defaultACL)
      }
-   // guard could be a pool?
-   // var guard: ActorRef = _
 
 //  @throws[Exception](classOf[Exception])
 //  def preStart() = {
@@ -95,8 +93,8 @@ object Resource:
       import akka.http.scaladsl.model.headers.`Last-Modified`
       `Last-Modified`(DateTime(att.lastModifiedTime().toMillis))
 
-   /** Return the link stating that the subject is a an LDPR. If None, then the subject is the
-     * resource that returns the resource.
+   /** Return the link stating that the subject is a an LDPR.
+    * If None, then the subject is the resource that returns the resource.
      */
    def LDPR(subject: Option[Uri] = None): LinkValue =
      LinkValue(run.cosy.ldp.fs.BasicContainer.ldpr,
@@ -111,9 +109,6 @@ object Resource:
    import run.cosy.http.auth.Agent
    import run.cosy.ldp.SolidCmd.ReqDataSet
 
-   /** change to wac.imports when available */
-   val defaultACLGraph: Rdf#Graph          = (URI("") -- owl.imports ->- URI(".acl")).graph
-   val defaultACLGraphContainer: Rdf#Graph = (URI("") -- owl.imports ->- URI("../.acl")).graph
 end Resource
 
 import run.cosy.ldp.fs.BasicContainer.PostCreation
@@ -169,10 +164,18 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
       import ACInfo.*
       val acAct: ACInfo = aclActor(aclLinkExists) match
        case None        => defaultAC
-       case Some(acRef) => ACtrlRef(aclUri, acRef)
+       case Some(acRef) => ACtrlRef(uri, aclName, acRef, false)
       new VersionsInfo(lastVersion, linkTo, acAct) {}
 
-   /** An LDPR created with POST is only finished when the content has downloaded (and potentially
+   override def aclLinks(acl: Uri, active: ACInfo): List[LinkValue] =
+     LinkValue(acl, LinkParams.rel("acl")) :: {
+       def lv = LinkValue(active.container, LinkParams.rel(BasicContainer.defaultACLink)) :: Nil
+       active match
+        case ACInfo.ACtrlRef(container,acl,_,isContainer) if container == uri => Nil
+        case _ => lv
+     }
+
+/** An LDPR created with POST is only finished when the content has downloaded (and potentially
      * been verified)
      */
    def justCreatedBehavior(acInfo: ACInfo) =
@@ -207,7 +210,7 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
           cmd.respondWith(HttpResponse(
             Created,
             Location(uri) :: Link(
-              LDPR(Some(uri)) :: aclLinks(aclUri, acInfo)
+              LDPR(Some(uri)) :: aclLinks(aclUri, acInfo )
             ) :: AllowHeader :: headersFor(att),
             HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
           ))

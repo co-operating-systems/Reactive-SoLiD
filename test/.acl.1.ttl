@@ -4,11 +4,10 @@
 <#R1> a wac:Authorization; 
    wac:mode wac:Control;
    wac:agent <https://bblfish.net/people/henry/card#me>;
-   wac:default <.> .
+   wac:default </> .
 
 <#R2> a wac:Authorization; 
    wac:mode wac:Read;
    wac:agentClass foaf:Agent;
-   wac:accessTo <.> ;
-   wac:default <.> .
+   wac:default </> .
 
