@@ -18,6 +18,7 @@ import run.cosy.ldp.Messages.{CmdMessage, Route}
 import run.cosy.ldp.fs.BasicContainer
 import run.cosy.ldp.rdf.LocatedGraphs.{LGs, LocatedGraph, Pointed, PtsLGraph}
 import run.cosy.ldp.ACInfo.*
+import run.cosy.ldp.fs.BasicContainer.aclLinks
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
@@ -222,14 +223,14 @@ object Guard:
                 msg.respondWithScr(HttpResponse(
                   StatusCodes.Unauthorized,
                   `WWW-Authenticate`(HttpChallenge("HttpSig", s"${msg.target}")) ::
-                    Link(BasicContainer.aclLinks(aclUri, msgACL)) :: Nil
+                    Link(aclLinks(msg.target, aclUri, msgACL)) :: Nil
                 ))
               case Failure(e) =>
                 context.log.info(s"Unable to authorize ${msg.target}: $e ")
                 msg.respondWithScr(HttpResponse(
                   StatusCodes.Unauthorized,
                   `WWW-Authenticate`(HttpChallenge("HttpSig", s"${msg.target}"))
-                    :: Link(BasicContainer.aclLinks(aclUri, msgACL)) :: Nil,
+                    :: Link(aclLinks(msg.target, aclUri, msgACL)) :: Nil,
                   HttpEntity(ContentTypes.`text/plain(UTF-8)`, e.getMessage)
                 ))
             }

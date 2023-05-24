@@ -280,7 +280,6 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
           Req.Put(rootAclUri).withEntity(HttpEntity(`text/turtle`, aclTurtle)) ~>
             solid.routeLdp(WebServerAgent) ~> check {
               status shouldEqual OK
-              info(s"response is $response")
 //              testACLLinks(rootUri, response.headers[Link], debug = true)
             }
 
@@ -337,7 +336,7 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
             "create more blogs and GET them too with same slug. Numbering continues where it left off."
           )
           for count <- (6 to 7).toList do
-             val blogDir = wsAgentClient.newContainer(rootC, Slug("blog"), Some(rootUri/""))
+             val blogDir = wsAgentClient.newContainer(rootC, Slug("blog"), Some(rootUri.withSlash), debug = true)
              blogDir shouldEqual toUri(s"/blog_$count/")
      }
    }

@@ -102,11 +102,12 @@ object BasicContainer:
    // see proposal: https://github.com/solid/specification/issues/325#issuecomment-1474817231
    val defaultACLink = "defaultAccessContainer"
 
-   def aclLinks(acl: Uri, active: ACInfo): List[LinkValue] =
-     LinkValue(acl, LinkParams.rel("acl")) :: {
-       if acl == active.container ?/ ".acl" then Nil
-       else LinkValue(active.container, LinkParams.rel(defaultACLink)) :: Nil
-     }
+   def aclLinks(on: Uri, aclUri: Uri, active: ACInfo): List[LinkValue] =
+      active match
+       case aci: ACInfo if aci.container == on =>
+         List(LinkValue(active.aclUri, LinkParams.rel("acl")))
+       case _ => List(LinkValue(aclUri, LinkParams.rel("acl")),
+           LinkValue(active.container, LinkParams.rel(defaultACLink)))
 
    /** A collection of "unwise" characters according to
      * [[https://tools.ietf.org/html/rfc2396#section-2.4.3 RFC 2396]].
@@ -469,7 +470,12 @@ class BasicContainer private (
               create.cmd.respondWith(HttpResponse(
                 Created,
                 Location(containerUrlSlash)
-                  :: Link(LDPLinkHeaders ::: BasicContainer.aclLinks(aclUri, defaultAC))
+                  :: Link(
+                    LDPLinkHeaders ::: aclLinks(
+                      (create.cmd.target ?/ create.name.getFileName.toString).withSlash, aclUri,
+                      defaultAC
+                    )
+                  )
                   :: AllowHeader :: Nil
               ))
               Behaviors.same
@@ -480,7 +486,8 @@ class BasicContainer private (
               //   to find the parent actor for the ACL before starting it....
               defaultAC match
                case ACInfo.ACtrlRef(acu, acFileName, actor, _) if acFileName == name =>
-                 Dir(contains - name, counters, ACContainer(containerUrlSlash, context.context.self)).start
+                 Dir(contains - name, counters,
+                   ACContainer(containerUrlSlash, context.context.self)).start
                case _ => Dir(contains - name, counters, defaultAC).start
         }.receiveSignal {
           case (_, signal) if signal == PreRestart || signal == PostStop =>
@@ -652,7 +659,7 @@ class BasicContainer private (
             pcmd.respondWith(HttpResponse( // todo, add more
               NoContent,
               `Accept-Post` :: Link(
-                LDPLinkHeaders ::: aclLinks(uri, defaultAC)
+                LDPLinkHeaders ::: aclLinks(uri, aclUri, defaultAC)
               ) :: AllowHeader :: Nil
             ))
             Behaviors.same
@@ -662,7 +669,7 @@ class BasicContainer private (
             if req.headers[Accept].exists(_.mediaRanges.exists(_.matches(`text/turtle`))) then
                pcmd.respondWith(HttpResponse(
                  OK,
-                 Link(LDPLinkHeaders ::: aclLinks(aclUri, defaultAC)) :: `Accept-Post`
+                 Link(LDPLinkHeaders ::: aclLinks(uri, aclUri, defaultAC)) :: `Accept-Post`
                    :: AllowHeader :: Nil,
                  HttpEntity(
                    `text/turtle`.toContentType,
@@ -674,7 +681,7 @@ class BasicContainer private (
             else
                pcmd.respondWith(HttpResponse(
                  UnsupportedMediaType,
-                 Link(LDPLinkHeaders ::: aclLinks(aclUri, defaultAC))
+                 Link(LDPLinkHeaders ::: aclLinks(uri, aclUri, defaultAC))
                    :: `Accept-Post` :: AllowHeader :: Nil,
                  HttpEntity("We only support text/turtle media type at the moment")
                ))
@@ -698,7 +705,7 @@ class BasicContainer private (
             else
                pcmd.respondWith(HttpResponse(
                  Conflict,
-                 Link(LDPLinkHeaders ::: aclLinks(aclUri, defaultAC))
+                 Link(LDPLinkHeaders ::: aclLinks(uri, aclUri, defaultAC))
                    :: `Accept-Post` :: AllowHeader :: Nil,
                  entity = HttpEntity(
                    `text/turtle`.toContentType,

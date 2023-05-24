@@ -47,6 +47,8 @@ enum ACInfo(val container: Uri):
    def aclUri: Uri = this match
     case ACtrlRef(container, acName, _, isContainer) =>
       if isContainer then container ?/ acName
+      else if acName.endsWith(".acl")
+      then container.sibling(acName)
       else container.sibling(acName + ".acl")
     case other => other.container ?/ ".acl"
 
@@ -61,7 +63,7 @@ object ACInfo:
         rec(path, root)
 
    extension (path: ActorPath)
-      def toUriPath(starting: Int=0): Path =
-        path.elements.drop(starting).foldLeft(Uri.Path./)((p, name) => p ?/ name)
+     def toUriPath(starting: Int = 0): Path =
+       path.elements.drop(starting).foldLeft(Uri.Path./)((p, name) => p ?/ name)
 
 end ACInfo

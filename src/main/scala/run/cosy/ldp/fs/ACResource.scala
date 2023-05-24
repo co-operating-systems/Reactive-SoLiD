@@ -56,8 +56,8 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
 
    override def fileSystemProblemBehavior(e: Exception): Behaviors.Receive[AcceptMsg] = ???
 
-   override def aclLinks(acl: Uri, active: ACInfo): List[LinkValue] =
-    List(LinkValue(acl, LinkParams.rel("acl")))
+   override def aclLinks(active: ACInfo): List[LinkValue] =
+     List(LinkValue(aclUri, LinkParams.rel("acl")))
 
 /** This does not apply (so probably should not be here) */
    override def archivedBehavior(linkedToFile: String): Option[Behaviors.Receive[AcceptMsg]] = None
