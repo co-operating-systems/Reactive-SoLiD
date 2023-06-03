@@ -4,18 +4,11 @@
 
 <#R0> a wac:Authorization; 
    wac:mode wac:Control;
-   wac:agent _:a ;
-   wac:default <.> .
-
-<#R1> a wac:Authorization; 
-   wac:mode wac:Read;
-   wac:agentClass foaf:Agent ;
-   wac:accessTo <.acl> .
+   wac:agent _:a .
 
 <#R2> a wac:Authorization; 
    wac:agentClass foaf:Agent ;
    wac:mode wac:Read;
-   wac:accessTo <.> ;
-   wac:default <.> .
+   wac:accessTo <stream> .
 
 </rfcKey#> security:controller _:a .   
