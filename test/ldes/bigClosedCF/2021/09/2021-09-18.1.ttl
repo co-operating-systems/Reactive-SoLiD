@@ -1,0 +1,2045 @@
+@prefix crop:     <https://data.cropland.be/area#> .
+@prefix cropProp: <https://data.cropland.be/measure#> .
+@prefix dcat:     <http://www.w3.org/ns/dcat#> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix ldes:     <https://w3id.org/ldes#> .
+@prefix polMsr:   <https://data.politie.be/sensors/measurement#> .
+@prefix pzDev:    <https://data.politie.be/sensor/dev#> .
+@prefix sosa:     <http://www.w3.org/ns/sosa/> .
+@prefix tree:     <https://w3id.org/tree#> .
+@prefix wgs84:    <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+
+<>      a              tree:Node ;
+        tree:relation  [ a           tree:LessThanRelation ;
+                         tree:node   <2021-09-17> ;
+                         tree:path   sosa:resultTime ;
+                         tree:value  "2021-09-18T00:00:00+02"^^xsd:dateTimeStamp
+                       ] ;
+        tree:relation  [ a           tree:GreaterThanRelation ;
+                         tree:node   <2021-09-19> ;
+                         tree:path   sosa:resultTime ;
+                         tree:value  "2021-09-19T00:00:00+02"^^xsd:dateTimeStamp
+                       ] .
+
+<#1656>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3603.6177"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T04:00:00+02"^^xsd:dateTimeStamp .
+
+<#5081>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "129.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T18:00:00+02"^^xsd:dateTimeStamp .
+
+<#5060>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "209.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T08:00:00+02"^^xsd:dateTimeStamp .
+
+<#616>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "22.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T18:00:00+02"^^xsd:dateTimeStamp .
+
+<#587>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "2.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T03:00:00+02"^^xsd:dateTimeStamp .
+
+<#1735>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2560.4001"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T23:45:00+02"^^xsd:dateTimeStamp .
+
+<#1714>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5261.2466"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T18:30:00+02"^^xsd:dateTimeStamp .
+
+<#2110>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "25.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T21:00:00+02"^^xsd:dateTimeStamp .
+
+<#1685>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6905.122"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T11:15:00+02"^^xsd:dateTimeStamp .
+
+<#3579>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "56.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T11:00:00+02"^^xsd:dateTimeStamp .
+
+<#2081>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T06:00:00+02"^^xsd:dateTimeStamp .
+
+<#1664>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3621.4668"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T06:00:00+02"^^xsd:dateTimeStamp .
+
+<#3558>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "6.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T01:00:00+02"^^xsd:dateTimeStamp .
+
+<#5089>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "32.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T22:00:00+02"^^xsd:dateTimeStamp .
+
+<#1643>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3010.6091"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T00:45:00+02"^^xsd:dateTimeStamp .
+
+<#5068>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "144.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T12:00:00+02"^^xsd:dateTimeStamp .
+
+<#624>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "1.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T22:00:00+02"^^xsd:dateTimeStamp .
+
+<#5047>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "14.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T01:00:00+02"^^xsd:dateTimeStamp .
+
+<#603>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "73.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T11:00:00+02"^^xsd:dateTimeStamp .
+
+<#595>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "55.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T07:00:00+02"^^xsd:dateTimeStamp .
+
+<#1722>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "4290.437"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T20:30:00+02"^^xsd:dateTimeStamp .
+
+<#1701>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6599.426"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T15:15:00+02"^^xsd:dateTimeStamp .
+
+<#1693>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6418.308"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T13:15:00+02"^^xsd:dateTimeStamp .
+
+<#3587>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "47.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T15:00:00+02"^^xsd:dateTimeStamp .
+
+<#2089>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T10:00:00+02"^^xsd:dateTimeStamp .
+
+<#1672>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "7211.5903"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T08:00:00+02"^^xsd:dateTimeStamp .
+
+<#3566>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "5.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T05:00:00+02"^^xsd:dateTimeStamp .
+
+<#1651>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2796.6775"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T02:45:00+02"^^xsd:dateTimeStamp .
+
+<#2068>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "17.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T00:00:00+02"^^xsd:dateTimeStamp .
+
+<#5076>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "137.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T16:00:00+02"^^xsd:dateTimeStamp .
+
+<#5055>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "43.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T05:00:00+02"^^xsd:dateTimeStamp .
+
+<#611>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "67.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T15:00:00+02"^^xsd:dateTimeStamp .
+
+<#582>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T01:00:00+02"^^xsd:dateTimeStamp .
+
+<#1730>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3071.0706"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T22:30:00+02"^^xsd:dateTimeStamp .
+
+<#3603>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "4.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T23:00:00+02"^^xsd:dateTimeStamp .
+
+<#1709>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5879.69"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T17:15:00+02"^^xsd:dateTimeStamp .
+
+<#2105>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "85.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T18:00:00+02"^^xsd:dateTimeStamp .
+
+<#3595>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "25.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T19:00:00+02"^^xsd:dateTimeStamp .
+
+<#2097>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "137.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T14:00:00+02"^^xsd:dateTimeStamp .
+
+<#1680>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6629.6235"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T10:00:00+02"^^xsd:dateTimeStamp .
+
+<#3574>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "46.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T09:00:00+02"^^xsd:dateTimeStamp .
+
+<#2076>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "11.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T04:00:00+02"^^xsd:dateTimeStamp .
+
+<#1659>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3776.8835"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T04:45:00+02"^^xsd:dateTimeStamp .
+
+<#5084>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "51.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T20:00:00+02"^^xsd:dateTimeStamp .
+
+<#5063>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "279.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T09:00:00+02"^^xsd:dateTimeStamp .
+
+<#619>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "29.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T19:00:00+02"^^xsd:dateTimeStamp .
+
+<#590>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T05:00:00+02"^^xsd:dateTimeStamp .
+
+<#1717>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5008.932"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T19:15:00+02"^^xsd:dateTimeStamp .
+
+<#2113>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T22:00:00+02"^^xsd:dateTimeStamp .
+
+<#3582>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "21.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T13:00:00+02"^^xsd:dateTimeStamp .
+
+<#1688>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6606.1035"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T12:00:00+02"^^xsd:dateTimeStamp .
+
+<#3561>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "2.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T02:00:00+02"^^xsd:dateTimeStamp .
+
+<#2084>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "198.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T08:00:00+02"^^xsd:dateTimeStamp .
+
+<#1667>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "4554.328"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T06:45:00+02"^^xsd:dateTimeStamp .
+
+<#1646>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3220.5144"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T01:30:00+02"^^xsd:dateTimeStamp .
+
+<#5071>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "255.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T13:00:00+02"^^xsd:dateTimeStamp .
+
+<#627>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "5.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T23:00:00+02"^^xsd:dateTimeStamp .
+
+<#5050>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "6.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T03:00:00+02"^^xsd:dateTimeStamp .
+
+<#606>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "26.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T13:00:00+02"^^xsd:dateTimeStamp .
+
+<#598>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "37.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T09:00:00+02"^^xsd:dateTimeStamp .
+
+<#1725>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3997.4578"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T21:15:00+02"^^xsd:dateTimeStamp .
+
+<#1704>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6357.3755"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T16:00:00+02"^^xsd:dateTimeStamp .
+
+<#3590>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "18.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T17:00:00+02"^^xsd:dateTimeStamp .
+
+<#2100>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "36.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T16:00:00+02"^^xsd:dateTimeStamp .
+
+<#1696>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6706.1235"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T14:00:00+02"^^xsd:dateTimeStamp .
+
+<#2092>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "66.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T12:00:00+02"^^xsd:dateTimeStamp .
+
+<#1675>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6674.08"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T08:45:00+02"^^xsd:dateTimeStamp .
+
+<#3569>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "27.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T06:00:00+02"^^xsd:dateTimeStamp .
+
+<#2071>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T01:00:00+02"^^xsd:dateTimeStamp .
+
+<#1654>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2785.941"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T03:30:00+02"^^xsd:dateTimeStamp .
+
+<#5079>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "127.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T17:00:00+02"^^xsd:dateTimeStamp .
+
+<#5058>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "161.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T07:00:00+02"^^xsd:dateTimeStamp .
+
+<#614>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "27.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T17:00:00+02"^^xsd:dateTimeStamp .
+
+<#585>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "2.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T02:00:00+02"^^xsd:dateTimeStamp .
+
+<#1733>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2946.7917"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T23:15:00+02"^^xsd:dateTimeStamp .
+
+<#1712>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5765.575"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T18:00:00+02"^^xsd:dateTimeStamp .
+
+<#2108>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "43.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T20:00:00+02"^^xsd:dateTimeStamp .
+
+<#3598>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "6.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T21:00:00+02"^^xsd:dateTimeStamp .
+
+<#1683>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6413.813"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T10:45:00+02"^^xsd:dateTimeStamp .
+
+<#3577>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "55.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T10:00:00+02"^^xsd:dateTimeStamp .
+
+<#2079>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T05:00:00+02"^^xsd:dateTimeStamp .
+
+<#1662>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3680.1506"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T05:30:00+02"^^xsd:dateTimeStamp .
+
+<#3556>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "4.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T00:00:00+02"^^xsd:dateTimeStamp .
+
+<#5087>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "51.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T21:00:00+02"^^xsd:dateTimeStamp .
+
+<#1641>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2804.8645"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T00:15:00+02"^^xsd:dateTimeStamp .
+
+<#5066>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "183.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T11:00:00+02"^^xsd:dateTimeStamp .
+
+<#622>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "1.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T21:00:00+02"^^xsd:dateTimeStamp .
+
+<#5045>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "10.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T00:00:00+02"^^xsd:dateTimeStamp .
+
+<#601>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "55.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T10:00:00+02"^^xsd:dateTimeStamp .
+
+<#593>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "26.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T06:00:00+02"^^xsd:dateTimeStamp .
+
+<#1720>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "4055.2673"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T20:00:00+02"^^xsd:dateTimeStamp .
+
+<#1691>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6920.389"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T12:45:00+02"^^xsd:dateTimeStamp .
+
+<#3585>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "45.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T14:00:00+02"^^xsd:dateTimeStamp .
+
+<#2087>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T09:00:00+02"^^xsd:dateTimeStamp .
+
+<#1670>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6065.5015"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T07:30:00+02"^^xsd:dateTimeStamp .
+
+<#3564>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "3.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T04:00:00+02"^^xsd:dateTimeStamp .
+
+<#1649>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2646.8987"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T02:15:00+02"^^xsd:dateTimeStamp .
+
+<#5074>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "249.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T15:00:00+02"^^xsd:dateTimeStamp .
+
+<#5053>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "25.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T04:00:00+02"^^xsd:dateTimeStamp .
+
+<#609>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "78.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T14:00:00+02"^^xsd:dateTimeStamp .
+
+<#580>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "3.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T00:00:00+02"^^xsd:dateTimeStamp .
+
+<#1728>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3647.6045"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T22:00:00+02"^^xsd:dateTimeStamp .
+
+<#3601>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "6.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T22:00:00+02"^^xsd:dateTimeStamp .
+
+<#1707>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5847.1753"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T16:45:00+02"^^xsd:dateTimeStamp .
+
+<#3593>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "36.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T18:00:00+02"^^xsd:dateTimeStamp .
+
+<#2103>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "89.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T17:00:00+02"^^xsd:dateTimeStamp .
+
+<#1699>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6759.303"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T14:45:00+02"^^xsd:dateTimeStamp .
+
+<#3572>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "41.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T08:00:00+02"^^xsd:dateTimeStamp .
+
+<#2095>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "165.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T13:00:00+02"^^xsd:dateTimeStamp .
+
+<#1678>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6232.36"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T09:30:00+02"^^xsd:dateTimeStamp .
+
+<#2074>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "9.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T03:00:00+02"^^xsd:dateTimeStamp .
+
+<#1657>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3639.8884"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T04:15:00+02"^^xsd:dateTimeStamp .
+
+<#5082>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "87.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T19:00:00+02"^^xsd:dateTimeStamp .
+
+<#5061>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "274.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T08:00:00+02"^^xsd:dateTimeStamp .
+
+<#617>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "34.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T18:00:00+02"^^xsd:dateTimeStamp .
+
+<#588>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T04:00:00+02"^^xsd:dateTimeStamp .
+
+<#1715>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5153.274"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T18:45:00+02"^^xsd:dateTimeStamp .
+
+<#2111>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T21:00:00+02"^^xsd:dateTimeStamp .
+
+<#3580>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "24.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T12:00:00+02"^^xsd:dateTimeStamp .
+
+<#1686>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6418.91"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T11:30:00+02"^^xsd:dateTimeStamp .
+
+<#2082>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "148.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T07:00:00+02"^^xsd:dateTimeStamp .
+
+<#1665>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "4539.297"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T06:15:00+02"^^xsd:dateTimeStamp .
+
+<#3559>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "4.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T01:00:00+02"^^xsd:dateTimeStamp .
+
+<#5090>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "19.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T23:00:00+02"^^xsd:dateTimeStamp .
+
+<#1644>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3062.2466"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T01:00:00+02"^^xsd:dateTimeStamp .
+
+<#5069>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "272.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T12:00:00+02"^^xsd:dateTimeStamp .
+
+<#625>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "18.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T22:00:00+02"^^xsd:dateTimeStamp .
+
+<#5048>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "3.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T02:00:00+02"^^xsd:dateTimeStamp .
+
+<#604>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "33.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T12:00:00+02"^^xsd:dateTimeStamp .
+
+<#596>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "26.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T08:00:00+02"^^xsd:dateTimeStamp .
+
+<#1723>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3838.3167"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T20:45:00+02"^^xsd:dateTimeStamp .
+
+<#1702>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "7044.1636"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T15:30:00+02"^^xsd:dateTimeStamp .
+
+<#1694>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6743.3984"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T13:30:00+02"^^xsd:dateTimeStamp .
+
+<#3588>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "37.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T16:00:00+02"^^xsd:dateTimeStamp .
+
+<#2090>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "160.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T11:00:00+02"^^xsd:dateTimeStamp .
+
+<#1673>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "7795.7417"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T08:15:00+02"^^xsd:dateTimeStamp .
+
+<#3567>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "6.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T05:00:00+02"^^xsd:dateTimeStamp .
+
+<#1652>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2494.9055"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T03:00:00+02"^^xsd:dateTimeStamp .
+
+<#2069>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T00:00:00+02"^^xsd:dateTimeStamp .
+
+<#5077>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "200.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T16:00:00+02"^^xsd:dateTimeStamp .
+
+<#5056>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "82.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T06:00:00+02"^^xsd:dateTimeStamp .
+
+<#612>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "19.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T16:00:00+02"^^xsd:dateTimeStamp .
+
+<#583>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "4.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T01:00:00+02"^^xsd:dateTimeStamp .
+
+<#1731>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3276.2444"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T22:45:00+02"^^xsd:dateTimeStamp .
+
+<#1710>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5834.2935"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T17:30:00+02"^^xsd:dateTimeStamp .
+
+<#2106>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "66.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T19:00:00+02"^^xsd:dateTimeStamp .
+
+<#3596>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "7.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T20:00:00+02"^^xsd:dateTimeStamp .
+
+<#2098>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "52.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T15:00:00+02"^^xsd:dateTimeStamp .
+
+<#1681>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6485.748"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T10:15:00+02"^^xsd:dateTimeStamp .
+
+<#3575>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "46.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T09:00:00+02"^^xsd:dateTimeStamp .
+
+<#2077>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T04:00:00+02"^^xsd:dateTimeStamp .
+
+<#1660>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3268.3264"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T05:00:00+02"^^xsd:dateTimeStamp .
+
+<#5085>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "79.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T20:00:00+02"^^xsd:dateTimeStamp .
+
+<#5064>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "177.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T10:00:00+02"^^xsd:dateTimeStamp .
+
+<#620>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "3.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T20:00:00+02"^^xsd:dateTimeStamp .
+
+<#591>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "13.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T05:00:00+02"^^xsd:dateTimeStamp .
+
+<#1718>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "4905.825"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T19:30:00+02"^^xsd:dateTimeStamp .
+
+<#2114>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "11.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T23:00:00+02"^^xsd:dateTimeStamp .
+
+<#3583>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "57.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T13:00:00+02"^^xsd:dateTimeStamp .
+
+<#1689>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6490.1426"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T12:15:00+02"^^xsd:dateTimeStamp .
+
+<#3562>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "6.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T03:00:00+02"^^xsd:dateTimeStamp .
+
+<#2085>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T08:00:00+02"^^xsd:dateTimeStamp .
+
+<#1668>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5291.9824"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T07:00:00+02"^^xsd:dateTimeStamp .
+
+<#1647>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2713.4001"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T01:45:00+02"^^xsd:dateTimeStamp .
+
+<#5072>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "164.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T14:00:00+02"^^xsd:dateTimeStamp .
+
+<#5051>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "10.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T03:00:00+02"^^xsd:dateTimeStamp .
+
+<#607>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "70.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T13:00:00+02"^^xsd:dateTimeStamp .
+
+<#599>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "48.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T09:00:00+02"^^xsd:dateTimeStamp .
+
+<#1726>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3896.565"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T21:30:00+02"^^xsd:dateTimeStamp .
+
+<#1705>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6239.1704"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T16:15:00+02"^^xsd:dateTimeStamp .
+
+<#3591>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "26.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T17:00:00+02"^^xsd:dateTimeStamp .
+
+<#2101>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "123.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T16:00:00+02"^^xsd:dateTimeStamp .
+
+<#1697>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6424.7495"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T14:15:00+02"^^xsd:dateTimeStamp .
+
+<#3570>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "29.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T07:00:00+02"^^xsd:dateTimeStamp .
+
+<#2093>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "100.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T12:00:00+02"^^xsd:dateTimeStamp .
+
+<#1676>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6397.5386"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T09:00:00+02"^^xsd:dateTimeStamp .
+
+<#2072>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "9.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T02:00:00+02"^^xsd:dateTimeStamp .
+
+<#1655>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3006.4485"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T03:45:00+02"^^xsd:dateTimeStamp .
+
+<#5080>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "108.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T18:00:00+02"^^xsd:dateTimeStamp .
+
+<#5059>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "221.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T07:00:00+02"^^xsd:dateTimeStamp .
+
+<#615>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "46.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T17:00:00+02"^^xsd:dateTimeStamp .
+
+<#586>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "1.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T03:00:00+02"^^xsd:dateTimeStamp .
+
+<#1734>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2941.927"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T23:30:00+02"^^xsd:dateTimeStamp .
+
+<#1713>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5282.6543"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T18:15:00+02"^^xsd:dateTimeStamp .
+
+<#2109>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T20:00:00+02"^^xsd:dateTimeStamp .
+
+<#3599>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "11.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T21:00:00+02"^^xsd:dateTimeStamp .
+
+<#1684>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6292.1826"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T11:00:00+02"^^xsd:dateTimeStamp .
+
+<#3578>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "33.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T11:00:00+02"^^xsd:dateTimeStamp .
+
+<#2080>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "65.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T06:00:00+02"^^xsd:dateTimeStamp .
+
+<#1663>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3475.2449"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T05:45:00+02"^^xsd:dateTimeStamp .
+
+<#3557>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "9.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T00:00:00+02"^^xsd:dateTimeStamp .
+
+<#5088>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "13.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T22:00:00+02"^^xsd:dateTimeStamp .
+
+<#1642>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2611.5679"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T00:30:00+02"^^xsd:dateTimeStamp .
+
+<#5067>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "256.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T11:00:00+02"^^xsd:dateTimeStamp .
+
+<#623>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "17.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T21:00:00+02"^^xsd:dateTimeStamp .
+
+<#5046>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "8.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T01:00:00+02"^^xsd:dateTimeStamp .
+
+<#602>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "29.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T11:00:00+02"^^xsd:dateTimeStamp .
+
+<#594>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "24.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T07:00:00+02"^^xsd:dateTimeStamp .
+
+<#1721>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "4300.9385"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T20:15:00+02"^^xsd:dateTimeStamp .
+
+<#1700>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6985.5796"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T15:00:00+02"^^xsd:dateTimeStamp .
+
+<#1692>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "7046.3135"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T13:00:00+02"^^xsd:dateTimeStamp .
+
+<#3586>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "33.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T15:00:00+02"^^xsd:dateTimeStamp .
+
+<#2088>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "158.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T10:00:00+02"^^xsd:dateTimeStamp .
+
+<#1671>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6651.5654"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T07:45:00+02"^^xsd:dateTimeStamp .
+
+<#3565>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "3.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T04:00:00+02"^^xsd:dateTimeStamp .
+
+<#1650>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2579.9612"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T02:30:00+02"^^xsd:dateTimeStamp .
+
+<#5075>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "260.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T15:00:00+02"^^xsd:dateTimeStamp .
+
+<#5054>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "13.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T05:00:00+02"^^xsd:dateTimeStamp .
+
+<#610>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "38.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T15:00:00+02"^^xsd:dateTimeStamp .
+
+<#581>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "11.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T00:00:00+02"^^xsd:dateTimeStamp .
+
+<#1729>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "4233.3994"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T22:15:00+02"^^xsd:dateTimeStamp .
+
+<#3602>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "4.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T23:00:00+02"^^xsd:dateTimeStamp .
+
+<#1708>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6371.8384"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T17:00:00+02"^^xsd:dateTimeStamp .
+
+<#2104>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "16.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T18:00:00+02"^^xsd:dateTimeStamp .
+
+<#3594>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "11.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T19:00:00+02"^^xsd:dateTimeStamp .
+
+<#3573>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "67.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T08:00:00+02"^^xsd:dateTimeStamp .
+
+<#2096>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "19.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T14:00:00+02"^^xsd:dateTimeStamp .
+
+<#1679>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6480.883"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T09:45:00+02"^^xsd:dateTimeStamp .
+
+<#2075>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T03:00:00+02"^^xsd:dateTimeStamp .
+
+<#1658>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3464.2402"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T04:30:00+02"^^xsd:dateTimeStamp .
+
+<#5083>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "99.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T19:00:00+02"^^xsd:dateTimeStamp .
+
+<#5062>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "230.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T09:00:00+02"^^xsd:dateTimeStamp .
+
+<#618>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "6.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T19:00:00+02"^^xsd:dateTimeStamp .
+
+<#589>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "2.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T04:00:00+02"^^xsd:dateTimeStamp .
+
+<#1716>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5305.0"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T19:00:00+02"^^xsd:dateTimeStamp .
+
+<#2112>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "30.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T22:00:00+02"^^xsd:dateTimeStamp .
+
+<#3581>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "38.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T12:00:00+02"^^xsd:dateTimeStamp .
+
+<#1687>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6356.3013"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T11:45:00+02"^^xsd:dateTimeStamp .
+
+<#3560>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "4.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T02:00:00+02"^^xsd:dateTimeStamp .
+
+<#2083>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T07:00:00+02"^^xsd:dateTimeStamp .
+
+<#1666>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "4684.0767"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T06:30:00+02"^^xsd:dateTimeStamp .
+
+<#5091>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "29.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T23:00:00+02"^^xsd:dateTimeStamp .
+
+<#1645>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3096.1682"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T01:15:00+02"^^xsd:dateTimeStamp .
+
+<#5070>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "171.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T13:00:00+02"^^xsd:dateTimeStamp .
+
+<#626>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T23:00:00+02"^^xsd:dateTimeStamp .
+
+<#5049>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "12.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T02:00:00+02"^^xsd:dateTimeStamp .
+
+<#605>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "70.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T12:00:00+02"^^xsd:dateTimeStamp .
+
+<#597>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "63.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T08:00:00+02"^^xsd:dateTimeStamp .
+
+<#1724>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "4119.3867"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T21:00:00+02"^^xsd:dateTimeStamp .
+
+<#1703>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6030.54"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T15:45:00+02"^^xsd:dateTimeStamp .
+
+<#1695>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6611.8735"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T13:45:00+02"^^xsd:dateTimeStamp .
+
+<#3589>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "52.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T16:00:00+02"^^xsd:dateTimeStamp .
+
+<#2091>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "1.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T11:00:00+02"^^xsd:dateTimeStamp .
+
+<#1674>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6128.8506"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T08:30:00+02"^^xsd:dateTimeStamp .
+
+<#3568>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "13.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T06:00:00+02"^^xsd:dateTimeStamp .
+
+<#2070>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "19.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T01:00:00+02"^^xsd:dateTimeStamp .
+
+<#1653>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2627.9414"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T03:15:00+02"^^xsd:dateTimeStamp .
+
+<#5078>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "71.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T17:00:00+02"^^xsd:dateTimeStamp .
+
+<#5057>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "135.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T06:00:00+02"^^xsd:dateTimeStamp .
+
+<#613>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "57.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T16:00:00+02"^^xsd:dateTimeStamp .
+
+<#584>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T02:00:00+02"^^xsd:dateTimeStamp .
+
+<#1732>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2754.7358"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T23:00:00+02"^^xsd:dateTimeStamp .
+
+<#1711>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5240.4116"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T17:45:00+02"^^xsd:dateTimeStamp .
+
+<#2107>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T19:00:00+02"^^xsd:dateTimeStamp .
+
+<#3597>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "20.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T20:00:00+02"^^xsd:dateTimeStamp .
+
+<#2099>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "125.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T15:00:00+02"^^xsd:dateTimeStamp .
+
+<#1682>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6615.563"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T10:30:00+02"^^xsd:dateTimeStamp .
+
+<#3576>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "40.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T10:00:00+02"^^xsd:dateTimeStamp .
+
+<#2078>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "25.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T05:00:00+02"^^xsd:dateTimeStamp .
+
+<#1661>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3119.5212"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T05:15:00+02"^^xsd:dateTimeStamp .
+
+<#5086>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "40.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T21:00:00+02"^^xsd:dateTimeStamp .
+
+<#1640>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "3365.126"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T00:00:00+02"^^xsd:dateTimeStamp .
+
+<#5065>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "262.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T10:00:00+02"^^xsd:dateTimeStamp .
+
+<#621>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "23.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T20:00:00+02"^^xsd:dateTimeStamp .
+
+<#5044>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "13.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T00:00:00+02"^^xsd:dateTimeStamp .
+
+<#600>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "28.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T10:00:00+02"^^xsd:dateTimeStamp .
+
+<#592>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "7.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T06:00:00+02"^^xsd:dateTimeStamp .
+
+<#1719>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "4227.2915"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T19:45:00+02"^^xsd:dateTimeStamp .
+
+<#2115>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T23:00:00+02"^^xsd:dateTimeStamp .
+
+<#1690>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6873.4814"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T12:30:00+02"^^xsd:dateTimeStamp .
+
+<#3584>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "19.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T14:00:00+02"^^xsd:dateTimeStamp .
+
+<#3563>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "1.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T03:00:00+02"^^xsd:dateTimeStamp .
+
+<#2086>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "155.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T09:00:00+02"^^xsd:dateTimeStamp .
+
+<#1669>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "5190.05"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T07:15:00+02"^^xsd:dateTimeStamp .
+
+<#1648>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "2770.2043"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T02:00:00+02"^^xsd:dateTimeStamp .
+
+<#5073>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "220.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T14:00:00+02"^^xsd:dateTimeStamp .
+
+<#5052>  a                     sosa:Observation ;
+        wgs84:location         <area#loc734383> ;
+        sosa:hasSimpleResult   "13.0"^^xsd:float ;
+        sosa:madeBySensor      <https://data.politie.be/sensor/dev#213504+5+6> ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T04:00:00+02"^^xsd:dateTimeStamp .
+
+<stream#>  a                ldes:EventStream ;
+        ldes:timestampPath  sosa:resultTime ;
+        tree:member         <#2088> , <#1676> , <#620> , <#3585> , <#585> , <#590> , <#1646> , <#5081> , <#3597> , <#587> , <#5049> , <#5046> , <#1708> , <#617> , <#1672> , <#581> , <#1641> , <#1675> , <#3558> , <#597> , <#584> , <#5080> , <#2099> , <#1705> , <#1687> , <#3596> , <#3571> , <#599> , <#5048> , <#1656> , <#1722> , <#3577> , <#608> , <#1671> , <#5077> , <#593> , <#580> , <#1683> , <#1680> , <#1686> , <#3573> , <#1668> , <#5073> , <#607> , <#2069> , <#1644> , <#5068> , <#1710> , <#2103> , <#619> , <#3600> , <#1682> , <#3561> , <#1677> , <#1663> , <#1725> , <#5082> , <#3567> , <#586> , <#1690> , <#1707> , <#1640> , <#5064> , <#1696> , <#1658> , <#3580> , <#2115> , <#1673> , <#5079> , <#2076> , <#1720> , <#3563> , <#582> , <#1703> , <#614> , <#1692> , <#2111> , <#2090> , <#1657> , <#1717> , <#2072> , <#5075> , <#5056> , <#3591> , <#2078> , <#1719> , <#610> , <#2105> , <#3602> , <#605> , <#5089> , <#1731> , <#1665> , <#3569> , <#1713> , <#1700> , <#5070> , <#1716> , <#1698> , <#5052> , <#2101> , <#5058> , <#601> , <#5055> , <#3588> , <#2104> , <#1728> , <#5085> , <#1649> , <#1661> , <#5088> , <#3565> , <#2085> , <#1730> , <#616> , <#1712> , <#1694> , <#2097> , <#5051> , <#3594> , <#3584> , <#1697> , <#2113> , <#2100> , <#1645> , <#1679> , <#1727> , <#2081> , <#5084> , <#1655> , <#612> , <#5065> , <#2093> , <#1693> , <#2096> , <#1674> , <#626> , <#3557> , <#596> , <#583> , <#1651> , <#1718> , <#1704> , <#5061> , <#598> , <#5047> , <#2092> , <#1670> , <#3587> , <#622> , <#2087> , <#2073> , <#5076> , <#592> , <#1648> , <#3570> , <#3556> , <#1714> , <#625> , <#2107> , <#595> , <#5091> , <#589> , <#1685> , <#1733> , <#5059> , <#1667> , <#2083> , <#5086> , <#5072> , <#2068> , <#1643> , <#2089> , <#5067> , <#621> , <#591> , <#602> , <#1681> , <#2098> , <#3598> , <#3560> , <#588> , <#1709> , <#1724> , <#3579> , <#3566> , <#618> , <#1706> , <#5063> , <#5069> , <#1642> , <#5066> , <#2114> , <#2094> , <#3590> , <#5078> , <#1688> , <#2075> , <#3575> , <#3562> , <#3572> , <#2109> , <#627> , <#1702> , <#613> , <#1723> , <#3578> , <#609> , <#5062> , <#2110> , <#1735> , <#1669> , <#3559> , <#1684> , <#2071> , <#5074> , <#1652> , <#2077> , <#623> , <#2074> , <#3574> , <#3601> , <#604> , <#2108> , <#3582> , <#3568> , <#1734> , <#1715> , <#2070> , <#600> , <#1664> , <#5054> , <#1691> , <#603> , <#3564> , <#2084> , <#5087> , <#1659> , <#3581> , <#615> , <#1711> , <#3593> , <#1660> , <#5050> , <#2112> , <#5045> , <#1721> , <#3599> , <#1678> , <#1726> , <#5060> , <#2080> , <#5083> , <#2079> , <#1654> , <#611> , <#3576> , <#2095> , <#3595> , <#3592> , <#5057> , <#5044> , <#2106> , <#1650> , <#1732> , <#1666> , <#1653> , <#1689> , <#1701> , <#5071> , <#2091> , <#5053> , <#3586> , <#1699> , <#2086> , <#2102> , <#3583> , <#1647> , <#624> , <#3589> , <#1729> , <#5090> , <#594> , <#3603> , <#606> , <#1662> , <#1695> , <#2082> ;
+        tree:shape          <flows-shacl> ;
+        tree:view           <> .
+
+<#608>  a                      sosa:Observation ;
+        wgs84:location         <area#loc781089> ;
+        sosa:hasSimpleResult   "18.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213501 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T14:00:00+02"^^xsd:dateTimeStamp .
+
+<#1727>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "4295.1367"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T21:45:00+02"^^xsd:dateTimeStamp .
+
+<#3600>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "4.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T22:00:00+02"^^xsd:dateTimeStamp .
+
+<#1706>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6334.896"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T16:30:00+02"^^xsd:dateTimeStamp .
+
+<#3592>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "13.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T18:00:00+02"^^xsd:dateTimeStamp .
+
+<#2102>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "31.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T17:00:00+02"^^xsd:dateTimeStamp .
+
+<#1698>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6635.6953"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T14:30:00+02"^^xsd:dateTimeStamp .
+
+<#3571>  a                     sosa:Observation ;
+        wgs84:location         <area#loc763628> ;
+        sosa:hasSimpleResult   "60.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213503 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T07:00:00+02"^^xsd:dateTimeStamp .
+
+<#2094>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "28.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:bike ;
+        sosa:resultTime        "2021-09-18T13:00:00+02"^^xsd:dateTimeStamp .
+
+<#1677>  a                     sosa:Observation ;
+        wgs84:location         <area#loc> ;
+        sosa:hasSimpleResult   "6405.5254"^^xsd:float ;
+        sosa:madeBySensor      crop:schoolstraat ;
+        sosa:observedProperty  cropProp:deviceNbr ;
+        sosa:resultTime        "2021-09-18T09:15:00+02"^^xsd:dateTimeStamp .
+
+<#2073>  a                     sosa:Observation ;
+        wgs84:location         <area#loc625668> ;
+        sosa:hasSimpleResult   "0.0"^^xsd:float ;
+        sosa:madeBySensor      pzDev:213502 ;
+        sosa:observedProperty  polMsr:motorized ;
+        sosa:resultTime        "2021-09-18T02:00:00+02"^^xsd:dateTimeStamp .

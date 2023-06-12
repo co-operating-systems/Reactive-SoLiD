@@ -43,7 +43,7 @@ import run.cosy.ldp.SolidPostOffice
 import run.cosy.http.RdfParser.{rdfRequest, rdfUnmarshaller}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import org.scalatest.Assertion
-import run.cosy.http.util.UriX.?/
+import run.cosy.http.util.UriX.*
 import run.cosy.ldp.ACInfo.*
 import run.cosy.ldp.TestSolidRouteSpec.rootUri
 
@@ -240,19 +240,22 @@ class TestSolidLDPAuthSpec extends AnyWordSpec with Matchers with ScalatestRoute
         val blogDir = test.newContainer(rootC, Slug("blog"))
         blogDir shouldEqual toUri("/blog/")
 
-        info("enable creation a new resource with POST in the new container and read it 3 times")
+        info("enable creation a new resource with POST")
         val content      = "My First Blog Post is great"
         val firstBlogUri = test.newResource(blogDir, Slug("First Blog"), content)
         firstBlogUri equals toUri("/blog/FirstBlog")
-        test.read(firstBlogUri, content, 3, Some(rootUri ?/ ".acl"))
 
+        info(s"read the new resource $firstBlogUri")
+        test.read(firstBlogUri, content, 3, Some(rootUri.withSlash))
+
+        info("create three new containers resource with POST")
         for count <- (2 to 5).toList do
            val content = s"My Cat had $count babies"
            val blogDir = test.newContainer(rootC, Slug("blog"))
            blogDir shouldEqual toUri(s"/blog_$count/")
            val firstBlogUri = test.newResource(blogDir, Slug(s"A Blog in $count"), content)
            firstBlogUri equals toUri(s"/blog_$count/ABlogIn$count")
-           test.read(firstBlogUri, content, 2, Some(rootUri ?/ ".acl"))
+           test.read(firstBlogUri, content, 2, Some(rootUri.withSlash ))
            // todo: read contents of dir to see contents added
      }
 

@@ -7,8 +7,8 @@
 package run.cosy.ldp.fs
 
 import _root_.run.cosy.http.util.UriX.*
+import akka.actor.typed.*
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior, PostStop, PreRestart}
 import akka.event.slf4j.Slf4jLogger
 import akka.http.scaladsl.model
 import akka.http.scaladsl.model.*
@@ -22,16 +22,15 @@ import akka.stream.scaladsl.{Concat, FileIO, Merge, RunnableGraph, Source}
 import akka.stream.{ActorMaterializer, IOResult, Materializer}
 import akka.util.ByteString
 import akka.{Done, NotUsed}
+import cats.data.NonEmptyList
 import run.cosy.http.RDFMediaTypes.`text/turtle`
 import run.cosy.http.auth.*
 import run.cosy.http.headers.Slug
 import run.cosy.http.{IResponse, RDFMediaTypes, RdfParser}
-import run.cosy.ldp.ACInfo
 import run.cosy.ldp.ACInfo.{ACContainer, Root}
 import run.cosy.ldp.fs.BasicContainer
 import run.cosy.ldp.fs.BasicContainer.{AllowHeader, LDPLinkHeaders, `Accept-Post`, rdfContentTypes}
-import run.cosy.ldp.{ResourceRegistry, SolidCmd, SolidPostOffice}
-import cats.data.NonEmptyList
+import run.cosy.ldp.{ACInfo, ResourceRegistry, SolidCmd, SolidPostOffice}
 
 import java.io.{BufferedReader, BufferedWriter, FileReader, FileWriter}
 import java.lang.UnsupportedOperationException
@@ -101,13 +100,14 @@ object BasicContainer:
    val ldpr  = ldp.Resource.toAkka
 
    // see proposal: https://github.com/solid/specification/issues/325#issuecomment-1474817231
-   val effectiveACLink = "effectiveAccessControl"
+   val defaultACLink = "defaultAccessContainer"
 
-   def aclLinks(acl: Uri, active: ACInfo): List[LinkValue] =
-     LinkValue(acl, LinkParams.rel("acl")) :: {
-       if acl == active.acl then Nil
-       else LinkValue(active.acl, LinkParams.rel(BasicContainer.effectiveACLink)) :: Nil
-     }
+   def aclLinks(on: Uri, aclUri: Uri, active: ACInfo): List[LinkValue] =
+      active match
+       case aci: ACInfo if aci.container == on =>
+         List(LinkValue(active.aclUri, LinkParams.rel("acl")))
+       case _ => List(LinkValue(aclUri, LinkParams.rel("acl")),
+           LinkValue(active.container, LinkParams.rel(defaultACLink)))
 
    /** A collection of "unwise" characters according to
      * [[https://tools.ietf.org/html/rfc2396#section-2.4.3 RFC 2396]].
@@ -207,12 +207,12 @@ object BasicContainer:
    )
 
    /** calculate the effective ACL given an acl from the msg, the locally known default acl, and the
-     * local aclUri Essentially nothing changes if the known ACL is the local one. If the knownACL
-     * is local then it will only change if the ACL resource is deleted... (note then the default
-     * Acl can be found by querying the registry)
+     * local aclUri. Essentially nothing changes if the known ACInfo is the current directory. If
+     * the knownACL is local then it will only change if the ACL resource is deleted... (note then
+     * the default Acl can be found by querying the registry)
      */
    def effectiveAcinfo(msgAcl: ACInfo, knownACL: ACInfo, localAcl: Uri): ACInfo =
-     if knownACL.acl == localAcl then knownACL else msgAcl // the latest info wins
+     if knownACL.container ?/ ".acl" == localAcl then knownACL else msgAcl // the latest info wins
 
    import run.cosy.ldp.ACInfo
    import run.cosy.ldp.Messages.*
@@ -335,6 +335,7 @@ class BasicContainer private (
    type Refs     = Ref | ActorPath
    type Contents = HashMap[String, Refs]
    type Counter  = Map[String, Int]
+   val containerUrlSlash: Uri = containerUrl.withSlash
 
    given sys: ActorSystem[Nothing] = context.context.system
    given po: SolidPostOffice       = SolidPostOffice(sys)
@@ -353,11 +354,10 @@ class BasicContainer private (
          val aclProp: ACInfo =
             val ctx = context.context
             // if aclLink is aclUri, then we are at the root, and this document should be assumed to exist
-            val aclExists = aclLink.acl == aclUri || Files.exists(aclPath,
-              LinkOption.NOFOLLOW_LINKS)
+            val aclExists = Files.exists(aclPath, LinkOption.NOFOLLOW_LINKS)
             SolidPostOffice(ctx.system).addActorRef(containerUrl, ctx.self, aclExists)
-            if aclExists then ACContainer(aclUri, context.context.self) else aclLink
-         Dir(effectiveAcl = aclProp).start
+            if aclExists then ACContainer(containerUrlSlash, context.context.self) else aclLink
+         Dir(defaultAC = aclProp).start
       else ??? // if PUT create dir else return error
 
    // url for resource with `name` in this container
@@ -415,28 +415,13 @@ class BasicContainer private (
      *   - about counters for files to avoid requests to the FS
      *   - the closest acls that could contain a default
      */
-   case class Dir(
-       contains: Contents = HashMap(),
-       counters: Counter = HashMap(),
-       effectiveAcl: ACInfo
-   ):
+   case class Dir(contains: Contents = HashMap(), counters: Counter = HashMap(), defaultAC: ACInfo):
 
       import akka.stream.alpakka.file.scaladsl.Directory
 
       import java.nio.file.attribute.BasicFileAttributes
       import java.time.Instant
       import scala.annotation.tailrec
-
-      /** any default acl can only be a few containers up, so we calulate the number This then
-        * allows us to build a relative url for the acl, where we have the following correspondence:
-        * 0 -> <.acl> 1 -> <../.acl> 2 -> <../../.acl> etc...
-        */
-      val EffectiveAcl: Option[RawHeader] =
-        if effectiveAcl.acl eq aclUri
-        then None
-        else
-           Some(RawHeader("Link",
-             s"""<${effectiveAcl.acl}>; rel="${BasicContainer.effectiveACLink}""""))
 
       lazy val start: Behavior[AcceptMsg] =
         Behaviors.receiveMessage[AcceptMsg] { (msg: AcceptMsg) =>
@@ -484,8 +469,13 @@ class BasicContainer private (
               // reply that done
               create.cmd.respondWith(HttpResponse(
                 Created,
-                Location(containerUrl.withPath(containerUrl.path / ""))
-                  :: Link(LDPLinkHeaders ::: BasicContainer.aclLinks(aclUri, effectiveAcl))
+                Location(containerUrlSlash)
+                  :: Link(
+                    LDPLinkHeaders ::: aclLinks(
+                      (create.cmd.target ?/ create.name.getFileName.toString).withSlash, aclUri,
+                      defaultAC
+                    )
+                  )
                   :: AllowHeader :: Nil
               ))
               Behaviors.same
@@ -494,7 +484,11 @@ class BasicContainer private (
               po.removePath(containerUrl.copy(path = containerUrl.path / name))
               // todo: what if the child terminated is the AC Actor? say it is deleted? Then we would need
               //   to find the parent actor for the ACL before starting it....
-              new Dir(contains - name, counters, effectiveAcl).start
+              defaultAC match
+               case ACInfo.ACtrlRef(acu, acFileName, actor, _) if acFileName == name =>
+                 Dir(contains - name, counters,
+                   ACContainer(containerUrlSlash, context.context.self)).start
+               case _ => Dir(contains - name, counters, defaultAC).start
         }.receiveSignal {
           case (_, signal) if signal == PreRestart || signal == PostStop =>
             counters.foreach { (name, int) =>
@@ -520,8 +514,8 @@ class BasicContainer private (
            v match
             case ref: Ref => Some((ref, Dir.this))
             case fa: ActorPath =>
-              context.spawn(fa, urlFor(name), effectiveAcl).map { r =>
-                (r, new Dir(contains + (name -> r), counters, effectiveAcl))
+              context.spawn(fa, urlFor(name), defaultAC).map { r =>
+                (r, new Dir(contains + (name -> r), counters, defaultAC))
               }
          }.orElse {
            import java.io.IOException
@@ -531,8 +525,8 @@ class BasicContainer private (
            context.log.info(s"resolved <$dirPath>.resolve($name)=$path")
            Attributes.actorPath(path) match
             case Success(att: APath) =>
-              context.spawn(att, urlFor(name), effectiveAcl).map { r =>
-                (r, new Dir(contains + (name -> r), counters, effectiveAcl))
+              context.spawn(att, urlFor(name), defaultAC).map { r =>
+                (r, new Dir(contains + (name -> r), counters, defaultAC))
               }
             case Failure(err) =>
               import context.log
@@ -553,21 +547,23 @@ class BasicContainer private (
       // state monad	fn. create symlink to new file (we don't have an actor for it yet)
       def createSymLink(linkName: String, linkTo: String): Try[(RRef, Dir)] =
         Attributes.createSymLink(dirPath, linkName, linkTo).map { att =>
-           val ref = context.spawnSymLink(att, urlFor(linkName), effectiveAcl)
-           (ref, new Dir(contains + (linkName -> ref), counters, effectiveAcl))
+           val ref = context.spawnSymLink(att, urlFor(linkName), defaultAC)
+           (ref, new Dir(contains + (linkName -> ref), counters, defaultAC))
         }
 
       // state monad	fn. create symlink to new file (we don't have an actor for it yet)
       def createServerManaged(linkName: String, linkTo: String): Try[(SMRef, Dir)] =
         Attributes.createServerManaged(dirPath, linkName, linkTo).map { att =>
            val ref = context.spawnManaged(att, urlFor(linkName))
-           (ref, new Dir(contains + (linkName -> ref), counters, Root(aclUri)))
+           (ref,
+             Dir(contains + (linkName -> ref), counters,
+               ACInfo.ACtrlRef(containerUrlSlash, linkName, ref.actor, true)))
         }
 
       def createDir(newDirName: String): Try[(CRef, Dir)] =
         Attributes.createDir(dirPath, newDirName).map { att =>
-           val ref = context.spawnDir(att, urlFor(newDirName), effectiveAcl)
-           (ref, new Dir(contains + (newDirName -> ref), counters, effectiveAcl))
+           val ref = context.spawnDir(att, urlFor(newDirName), defaultAC)
+           (ref, new Dir(contains + (newDirName -> ref), counters, defaultAC))
         }
 
       /** state monad fn - return counter for given base name so that one can create the next name
@@ -575,7 +571,7 @@ class BasicContainer private (
         */
       def nextCounterFor(baseName: String): (Int, Dir) =
          val newcounter: Int = findSiblingCount(baseName) + 1
-         (newcounter, new Dir(contains, counters + (baseName -> newcounter), effectiveAcl))
+         (newcounter, new Dir(contains, counters + (baseName -> newcounter), defaultAC))
 
       def countFile(countFileRoot: String): java.io.File =
         dirPath.resolve(countFileRoot + ".count").toFile
@@ -663,7 +659,7 @@ class BasicContainer private (
             pcmd.respondWith(HttpResponse( // todo, add more
               NoContent,
               `Accept-Post` :: Link(
-                LDPLinkHeaders ::: aclLinks(uri, effectiveAcl)
+                LDPLinkHeaders ::: aclLinks(uri, aclUri, defaultAC)
               ) :: AllowHeader :: Nil
             ))
             Behaviors.same
@@ -673,7 +669,7 @@ class BasicContainer private (
             if req.headers[Accept].exists(_.mediaRanges.exists(_.matches(`text/turtle`))) then
                pcmd.respondWith(HttpResponse(
                  OK,
-                 Link(LDPLinkHeaders ::: aclLinks(aclUri, effectiveAcl)) :: `Accept-Post`
+                 Link(LDPLinkHeaders ::: aclLinks(uri, aclUri, defaultAC)) :: `Accept-Post`
                    :: AllowHeader :: Nil,
                  HttpEntity(
                    `text/turtle`.toContentType,
@@ -685,7 +681,7 @@ class BasicContainer private (
             else
                pcmd.respondWith(HttpResponse(
                  UnsupportedMediaType,
-                 Link(LDPLinkHeaders ::: aclLinks(aclUri, effectiveAcl))
+                 Link(LDPLinkHeaders ::: aclLinks(uri, aclUri, defaultAC))
                    :: `Accept-Post` :: AllowHeader :: Nil,
                  HttpEntity("We only support text/turtle media type at the moment")
                ))
@@ -709,8 +705,8 @@ class BasicContainer private (
             else
                pcmd.respondWith(HttpResponse(
                  Conflict,
-                 Link(LDPLinkHeaders ::: aclLinks(aclUri, effectiveAcl))
-                   :: `Accept-Post` :: AllowHeader :: EffectiveAcl.toList,
+                 Link(LDPLinkHeaders ::: aclLinks(uri, aclUri, defaultAC))
+                   :: `Accept-Post` :: AllowHeader :: Nil,
                  entity = HttpEntity(
                    `text/turtle`.toContentType,
                    Source.combine(ttlPrefix, dirList.map(containsAsTurtle))(Concat(_))
@@ -768,7 +764,7 @@ class BasicContainer private (
           case None => err(InternalServerError,
               s"Somehow the actor for <$containerUrl> received a message for <${req.uri}>")
           case Some(Empty) =>
-            val ldpcUri = containerUrl.withSlash
+            val ldpcUri = containerUrlSlash
             pcmd.respondWith(HttpResponse(
               MovedPermanently,
               Seq(Location(ldpcUri)),
@@ -796,7 +792,7 @@ class BasicContainer private (
                //   reauthenticate. But we may very well want to later keep track (in the metadata file or
                //   somwhere on who sent the message. In that case we would need a new Do(..., with a Path).
                //   But now right now as that would take too much time.
-               val msg = RouteMsg(remainingPath, pcmd.copy(from = WebServerAgent), effectiveAcl)
+               val msg = RouteMsg(remainingPath, pcmd.copy(from = WebServerAgent), defaultAC)
                context.context.self ! msg
                context.context.log.info(s"===> sent message $msg")
                Behaviors.same
@@ -930,8 +926,8 @@ class BasicContainer private (
         */
       protected def routeHttpReq(msg: RouteMsg): Behavior[AcceptMsg] =
          // the second projection is true if there is a change to the current dir lastMessage state
-         val newAcInfo = effectiveAcinfo(msg.lastSeenAC, effectiveAcl, aclUri)
-         val isNew     = newAcInfo != effectiveAcl
+         val newAcInfo = effectiveAcinfo(msg.lastSeenAC, defaultAC, aclUri)
+         val isNew     = newAcInfo != defaultAC
 
          val newDir: Option[Dir] = msg.nextRoute(newAcInfo) match
           case doit: WannaDo => doit.msg.target.fileName match
@@ -940,7 +936,7 @@ class BasicContainer private (
           case route: Route => forwardToContainer(msg.nextSegment, route)
 
          def updateDir(d: Dir): Dir =
-           if isNew then d.copy(effectiveAcl = newAcInfo) else d
+           if isNew then d.copy(defaultAC = newAcInfo) else d
 
          newDir match
           case None if isNew => updateDir(this).start

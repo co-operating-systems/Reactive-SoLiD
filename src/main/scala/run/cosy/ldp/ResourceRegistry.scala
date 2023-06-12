@@ -10,6 +10,7 @@ import akka.actor.typed.*
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import run.cosy.Solid.pathToList
+import run.cosy.http.util.UriX.*
 import run.cosy.ldp.fs.BasicContainer
 
 import java.util.concurrent.atomic.AtomicReference
@@ -17,9 +18,7 @@ import scala.annotation.tailrec
 import run.cosy.ldp.DirTree
 import run.cosy.ldp.ACInfo
 import run.cosy.ldp.ACInfo.ACContainer
-
 import run.cosy.ldp.Messages.*
-
 /** Whenever an LDPR actor goes up it should register itself here, so that messages can be routed
   * directly to the right actor, rather than passing the messages through the container hierarchy.
   * See [[ResourceRegistry.md ResourceRegistry]]
@@ -42,7 +41,6 @@ class ResourceRegistry(rootUri: Uri, rootLDPC: ActorRef[Messages.Route])
     extends PathDB[ActorRef[Messages.Route], Boolean]:
 
    override def hasAcl(a: Boolean): Boolean = a
-   val rootACUri                            = rootUri.copy(path = rootUri.path ?/ ".acl")
 
    // todo: remove the Option, requires knowing the root ActorRef
    /** We map the information in the DB to what is more useable. todo: Later if this works we can
@@ -54,9 +52,9 @@ class ResourceRegistry(rootUri: Uri, rootLDPC: ActorRef[Messages.Route])
       getActorRef(path).map { (lst, containerRef, lastACContainerRefOpt) =>
          val ac: ACInfo = lastACContainerRefOpt match
           case None => // todo: it would be nice if we could get rid of this
-            Root(rootACUri)
+            Root(rootUri.withSlash)
           case Some(lastAC) => // todo: replace 2 below with calcualted value
-            val acr = lastAC.path.toUri(2) ?/ ".acl"
-            ACContainer(rootUri.copy(path = acr), lastAC)
+            val acr = lastAC.path.toUriPath(2)
+            ACContainer(rootUri.copy(path = acr).withSlash, lastAC)
          (lst, containerRef, ac)
-      }.getOrElse((path, rootLDPC, Root(rootACUri)))
+      }.getOrElse((path, rootLDPC, Root(rootUri.withSlash)))

@@ -48,6 +48,9 @@ object UriX:
        case Path.Segment(head, tail) => Some(head)
        case _                        => None
 
+      /** find the container for this uri */
+      def container: Uri = uri.withPath(uri.path.container)
+
        /** remove uri without the final slash, or the same */
       def withoutSlash: Uri =
          val rev: Uri.Path = uri.path.reverse
@@ -57,10 +60,12 @@ object UriX:
 
       /** add slash to the end the final slash, or the same */
       def withSlash: Uri =
-        uri.withPath(uri.path ++ Uri.Path./)
-//        rev match
-//          case Uri.Path.Segment(_) => uri.withPath(Uri.Path.Slash(rev).reverse)
-//          case _ => uri
+//        uri.withPath(uri.path ++ Uri.Path./)
+        val rev = uri.path.reverse
+        rev match
+          case Uri.Path.Empty => uri.withPath(Uri.Path./)
+          case Uri.Path.Segment(name,tail) => uri.withPath(Slash(Uri.Path.Segment(name,tail)).reverse)
+          case _ => uri
 
       /** replace fileName with Name in Uri or else place filename after slash or add an initial
         * slash Todo: improve - this definintion feels very ad-hoc ...

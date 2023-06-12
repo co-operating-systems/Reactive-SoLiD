@@ -13,6 +13,7 @@ import run.cosy.ldp.Messages.{ChildTerminated, Cmd}
 import run.cosy.ldp.fs.APath
 import run.cosy.ldp.fs.Attributes.{DirAtt, ManagedR, ManagedResource, SymLink}
 import run.cosy.ldp.Messages.{ChildTerminated, Cmd}
+import run.cosy.http.util.UriX.*
 
 /** Enforce a limited actor spawn behavior that can be tested easily for a Container. As a Value
   * Type to avoid having to create an object
@@ -52,7 +53,7 @@ class Spawner(val context: ActorContext[BasicContainer.AcceptMsg]) extends AnyVa
    def spawnManaged(link: ManagedR, url: Uri): SMRef =
       val name = link.path.getFileName.toString
       // there could be other resources than ACResources
-      val ref = context.spawn(ACResource(url, link.path, name), name)
+      val ref = context.spawn(ACResource(url.container, url, link.path, name, true), name)
       context.watchWith(ref, ChildTerminated(name))
       SMRef(link, ref)
 

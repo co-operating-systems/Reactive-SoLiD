@@ -19,6 +19,7 @@ import akka.stream.scaladsl.FileIO
 import run.cosy.ldp.{ACInfo, SolidPostOffice}
 import run.cosy.ldp.ACInfo.ACContainer
 import run.cosy.ldp.Messages.*
+import run.cosy.http.util.UriX.*
 import run.cosy.ldp.fs.BasicContainer.{PostCreation, aclLinks}
 import run.cosy.ldp.fs.Resource.{AcceptMsg, StateSaved, extension, headersFor}
 
@@ -60,13 +61,22 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
    import run.cosy.http.util.UriX.sibling
    val aclUri = uri.sibling(aclName)
 
+   // todo: this actor needs to act like a container and receive cancelation messages from the acr
+   //  to reset it
    var aclActorDB: Option[ActorRef[AcceptMsg]] = None
+
+   /** calcuate the Link: <doc.acl>;rel="acl", and </>;rel="defaultAccessContainer" relations given
+     * the active ACInfo, which will be set to the <$aclUri>;rel=acl only if a local acl resource
+     * exists.
+     */
+   def aclLinks(active: ACInfo): List[LinkValue] = BasicContainer.aclLinks(uri, aclUri, active)
 
    def aclActor(create: Boolean): Option[ActorRef[AcceptMsg]] =
       if aclActorDB.isEmpty && create then
          val acn = aclName
          aclActorDB =
-           Some(context.spawn(ACResource(aclUri, linkPath.resolveSibling(acn), acn), acn))
+           Some(context.spawn(ACResource(uri, aclUri, linkPath.resolveSibling(acn), aclName, false),
+             acn))
       aclActorDB
 
    given ac: ActorContext[ScriptMsg[?] | Do] = context.asInstanceOf[ActorContext[ScriptMsg[?] | Do]]
@@ -348,14 +358,16 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                   // todo: the first !dotLinkName.isACR requirement would not exist if this code were not shared.
                   //  should it be shared?
                   aclInfo match
-                   case ACtrlRef(_, actorRef) => actorRef ! msg
-                   case _                     =>
+                   case ACtrlRef(_, _, actorRef, _) =>
+                     actorRef ! msg
+                   case _ =>
                      // todo: we have to check if the message is one to create the ACR. If it is
                      //  (and if it is allowed?) then we need to create the actor, and the resource
                      //  and forward the msg and change the behavior
                      cmdmsg.respondWith(HttpResponse(StatusCodes.NotFound))
-               else
-                  Guard.Authorize(cmdmsg, containerAcl, aclUri)
+               else if containerAcl.container.ancestorOf(aclInfo.container) then
+                  Guard.Authorize(cmdmsg, aclInfo, aclUri)
+               else Guard.Authorize(cmdmsg, containerAcl, aclUri)
                Behaviors.same
              case Do(cmdmsg @ CmdMessage(cmd, agent, replyTo)) =>
                import cmdmsg.given
@@ -421,7 +433,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                cmd.respondWith(HttpResponse(
                  StatusCodes.InternalServerError,
                  Location(uri) :: AllowHeader :: Link(
-                   LDPR(Some(uri)) :: (aclLinks(aclUri, aclInfo) ::: VersionLinks(lastVersion))
+                   LDPR(Some(uri)) :: (aclLinks(aclInfo) ::: VersionLinks(lastVersion))
                  ) :: headersFor(att),
                  entity = HttpEntity("PUT unsucessful")
                ))
@@ -438,7 +450,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
                cmd.respondWith(HttpResponse(
                  OK,
                  Location(uri) :: AllowHeader :: Link(
-                   LDPR(Some(uri)) :: (aclLinks(aclUri, aclInfo) ::: VersionLinks(lastVersion + 1))
+                   LDPR(Some(uri)) :: (aclLinks(aclInfo) ::: VersionLinks(lastVersion + 1))
                  ) :: headersFor(att),
                  HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
                ))
@@ -489,7 +501,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
             cmd.respondWith(HttpResponse(
               StatusCodes.PreconditionRequired,
               Location(uri) :: AllowHeader :: Link(
-                LDPR() :: { aclLinks(aclUri, aclInfo) ::: VersionLinks(lastVersion) }
+                LDPR() :: { aclLinks(aclInfo) ::: VersionLinks(lastVersion) }
               ) :: headersFor(att),
               HttpEntity(
                 "LDP Servers requires valid `If-Match` or `If-Unmodified-Since` headers for a PUT"
@@ -509,7 +521,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
             cmd.respondWith(HttpResponse(
               StatusCodes.PreconditionFailed,
               Location(uri) :: AllowHeader :: Link(
-                LDPR() :: { aclLinks(aclUri, aclInfo) ::: VersionLinks(lastVersion) }
+                LDPR() :: { aclLinks(aclInfo) ::: VersionLinks(lastVersion) }
               ) :: headersFor(att),
               HttpEntity(
                 "LDP Servers requires valid `If-Match` or `If-Unmodified-Since` headers for a PUT"
@@ -546,7 +558,7 @@ trait ResourceTrait(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
             HttpResponse(
               StatusCodes.OK,
               lastModified(attr) :: eTag(attr) :: AllowHeader :: Link(
-                LDPR() :: { aclLinks(aclUri, aclInfo) ::: VersionLinks(ver) }
+                LDPR() :: { aclLinks(aclInfo) ::: VersionLinks(ver) }
               ) :: Nil,
               HttpEntity.Default(
                 akka.http.scaladsl.model.ContentType(mt, () => HttpCharsets.`UTF-8`),

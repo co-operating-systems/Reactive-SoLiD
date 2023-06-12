@@ -63,7 +63,7 @@ object TestSolidRouteSpec:
      }
    ).flatten
 
-   val EffectiveLink = wac.accessControl.toAkka.withScheme("https").toString()
+   val EffectiveLink = BasicContainer.defaultACLink
    def aclEffectiveLinkHeaders(links: Seq[Link]): Seq[Uri] = links.map(
      _.values.collect {
        case lv @ LinkValue(uri, params) if params.exists {
@@ -102,7 +102,7 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
       val testKit = ActorTestKit()
       val rootCntr: Behavior[BasicContainer.AcceptMsg] = BasicContainer(
         rootUri, dirPath,
-        Root(ServerData.rootACL._1)
+        Root(TestSolidRouteSpec.rootUri / "")
       )
       given sys: ActorSystem[?]                        = testKit.internalSystem
       val rootActr: ActorRef[BasicContainer.AcceptMsg] = testKit.spawn(rootCntr, "solid")
@@ -128,6 +128,7 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
             header[Location].get shouldEqual Location(rootC)
           }
 
+        info(s"we GET <$rootUri/> ")
         Req.Get(rootUri.withPath(Uri.Path./)).withHeaders(Accept(`*/*`))
           ~> solid.routeLdp(WebServerAgent)
           ~> check {
@@ -137,19 +138,21 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
 
         val test = new SolidTestClient(solid, WebServerAgent)
 
-        info("create a new resource </Hello> with POST and read it 3 times")
-        val newUri = test.newResource(rootC, Slug("Hello"), "Hello World!", Some(rootACL))
-
+        info("create a new resource </Hello> with POST")
+        val newUri = test.newResource(rootC, Slug("Hello"), "Hello World!", Some(rootC))
         newUri equals toUri("/Hello")
-        info("read the new resource as admin. No link to default acl, since there is none")
-        test.read(newUri, "Hello World!", 3, Some(rootACL))
+
+        info(
+          s"read the new resource <$newUri> as admin 3 times. No link to default acl, since there is none"
+        )
+        test.read(newUri, "Hello World!", 3, Some(rootC))
 
         info("create 3 more resources with the same Slug and GET them too")
         for count <- (2 to 5).toList do
            val createdUri = test.newResource(rootC, Slug("Hello"), s"Hello World $count!",
-             Some(rootACL))
+             Some(rootC))
            assert(createdUri.path.endsWith(s"Hello_$count"))
-           test.read(createdUri, s"Hello World $count!", 3, Some(rootACL))
+           test.read(createdUri, s"Hello World $count!", 3, Some(rootC))
 
         info("Delete the first created resource </Hello>")
         Req.Delete(newUri) ~> solid.routeLdp(WebServerAgent) ~> check {
@@ -167,23 +170,23 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
         }
 
         info("Create a new Container </blog/>")
-        val blogDir: Uri = test.newContainer(rootC, Slug("blog"), Some(rootACL))
+        val blogDir: Uri = test.newContainer(rootC, Slug("blog"), Some(rootC))
         blogDir shouldEqual toUri("/blog/")
 
         info("enable creation a new resource with POST in the new container and read it 3 times")
         val content      = "My First Blog Post is great"
-        val firstBlogUri = test.newResource(blogDir, Slug("First Blog"), content, Some(rootACL))
+        val firstBlogUri = test.newResource(blogDir, Slug("First Blog"), content, Some(rootC))
         firstBlogUri equals toUri("/blog/FirstBlog")
-        test.read(firstBlogUri, content, 3, Some(rootACL))
+        test.read(firstBlogUri, content, 3, Some(rootC))
 
         for count <- (2 to 5).toList do
            val content = s"My Cat had $count babies"
-           val blogDir = test.newContainer(rootC, Slug("blog"), Some(rootACL))
+           val blogDir = test.newContainer(rootC, Slug("blog"), Some(rootC))
            blogDir shouldEqual toUri(s"/blog_$count/")
            val firstBlogUri = test.newResource(blogDir, Slug(s"A Blog in $count"), content,
-             Some(rootACL))
+             Some(rootC))
            firstBlogUri equals toUri(s"/blog_$count/ABlogIn$count")
-           test.read(firstBlogUri, content, 2, Some(rootACL))
+           test.read(firstBlogUri, content, 2, Some(rootC))
            // todo: read contents of dir to see contents added
         end for
 
@@ -198,10 +201,12 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
 
         info("check that any new file in created in the new blog dir has the acl of the dir")
         for count <- 6 to 7 do
+           info("create Blog in " + count)
            val firstBlogUri = test.newResource(blogDir, Slug(s"A Blog in $count"), content,
-             Some(blogDirACL))
+             Some(blogDir))
            firstBlogUri equals toUri(s"/blog/ABlogIn$count")
-           test.read(firstBlogUri, content, 2, Some(blogDirACL))
+           info(s"read <$firstBlogUri> 2 times as admin")
+           test.read(firstBlogUri, content, 2, Some(blogDir))
 
         val paths = List(
           blogDir ?/ "2023" / "04" / "30" / "solidServer",
@@ -217,7 +222,7 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
              solid.routeLdp(WebServerAgent) ~> check {
                status shouldEqual Created
                info("received result " + response)
-               testACLLinks(pu, response.headers[Link], Some(blogDirACL))
+               testACLLinks(pu, response.headers[Link], Some(blogDir))
              }
 
      }
@@ -275,7 +280,6 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
           Req.Put(rootAclUri).withEntity(HttpEntity(`text/turtle`, aclTurtle)) ~>
             solid.routeLdp(WebServerAgent) ~> check {
               status shouldEqual OK
-              info(s"response is $response")
 //              testACLLinks(rootUri, response.headers[Link], debug = true)
             }
 
@@ -310,9 +314,10 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
             "1.6 create more resources with the same Slug(Hello) and GET them too - the deleted one is not overwritten"
           )
           for count <- (6 to 9).toList do
+             info(s"create resource in <$rootC> with slug Hello - $count")
              val createdUri = ownerClient.newResource(rootC, Slug("Hello"),
                s"Hello World $count!",
-               Some(rootACL))
+               Some(rootUri.withSlash))
              assert(
                createdUri.path.endsWith(s"Hello_$count"),
                s"path of <$createdUri> should end with 'Hello_$count'"
@@ -325,13 +330,13 @@ class TestSolidRouteSpec extends AnyWordSpec with Matchers with ScalatestRouteTe
                status shouldEqual NotFound
              }
              info(s"Read <$createdUri> as anonymous")
-             anonClient.read(createdUri, s"Hello World $count!", 2, Some(rootACL))
+             anonClient.read(createdUri, s"Hello World $count!", 2, Some(rootUri/""))
           end for
           info(
             "create more blogs and GET them too with same slug. Numbering continues where it left off."
           )
           for count <- (6 to 7).toList do
-             val blogDir = wsAgentClient.newContainer(rootC, Slug("blog"), Some(rootACL))
+             val blogDir = wsAgentClient.newContainer(rootC, Slug("blog"), Some(rootUri.withSlash), debug = true)
              blogDir shouldEqual toUri(s"/blog_$count/")
      }
    }

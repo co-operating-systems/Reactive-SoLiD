@@ -10,7 +10,7 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.http.scaladsl.model.*
 import akka.http.scaladsl.model.HttpMethods.{GET, HEAD, OPTIONS, PUT}
-import akka.http.scaladsl.model.headers.{Accept, Allow, Link}
+import akka.http.scaladsl.model.headers.{Accept, Allow, Link, LinkParams, LinkValue}
 import org.eclipse.rdf4j.model.impl.DynamicModel
 import org.eclipse.rdf4j.rio.{RDFFormat, RDFWriter, Rio}
 import run.cosy.RDF.Rdf
@@ -19,7 +19,7 @@ import run.cosy.http.RdfParser
 import run.cosy.ldp.{ACInfo, SolidPostOffice}
 import run.cosy.ldp.Messages.CmdMessage
 import run.cosy.ldp.SolidCmd.Plain
-import run.cosy.ldp.fs.BasicContainer.{PostCreation, aclLinks}
+import run.cosy.ldp.fs.BasicContainer.PostCreation
 import run.cosy.ldp.fs.Resource.AcceptMsg
 import run.cosy.ldp.ACInfo.*
 
@@ -34,13 +34,15 @@ object ACResource:
    //  we would like to be able to specify that trig, n3 and other formats are also ok.
    val VersionHeaders = AllowHeader :: Nil
 
-   def apply(rUri: Uri, linkName: FPath, name: String): Behavior[AcceptMsg] =
-     Behaviors.setup[AcceptMsg] { (context: ActorContext[AcceptMsg]) =>
-       // val exists = Files.exists(root)
-       //			val registry = ResourceRegistry(context.system)
-       //			registry.addActorRef(rUri.path, context.self)
-       //			context.log.info("started LDPR actor at " + rUri.path)
-       new ACResource(rUri, linkName, context).behavior(Root(rUri))
+   def apply(containerUri: Uri, acrUri: Uri, linkPath: FPath, name: String, forDir: Boolean): Behavior[AcceptMsg] = Behaviors
+     .setup[AcceptMsg] { (context: ActorContext[AcceptMsg]) =>
+       import run.cosy.http.util.UriX.*
+       // note the behavior of an ACResource always takes itself as the ACR
+       // but it could also be different. An ACL could have another ACL...
+       // see https://github.com/solid/authorization-panel/issues/189
+       // Still at present this is only done so it fits in with ResourceTrait
+       new ACResource(acrUri, linkPath, context)
+         .behavior(ACtrlRef(containerUri, name, context.self, forDir))
      }
 
 /** Actor for Access Control resources, currently ".acl"
@@ -54,7 +56,10 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
 
    override def fileSystemProblemBehavior(e: Exception): Behaviors.Receive[AcceptMsg] = ???
 
-   /** This does not apply (so probably should not be here) */
+   override def aclLinks(active: ACInfo): List[LinkValue] =
+     List(LinkValue(aclUri, LinkParams.rel("acl")))
+
+/** This does not apply (so probably should not be here) */
    override def archivedBehavior(linkedToFile: String): Option[Behaviors.Receive[AcceptMsg]] = None
 
    // Then we have the default behavior
@@ -71,8 +76,8 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
 
    // Default behavior is the same as normal behavior, except that a GET on the resource returns the default
    // representation amd a PUT does not first check the file to get its properties
-   def defaultBehavior: Behaviors.Receive[AcceptMsg] = VersionsInfo(0, path,
-     Root(uri)).NormalBehavior
+   def defaultBehavior: Behaviors.Receive[AcceptMsg] = VersionsInfo(0, path, Root(uri))
+     .NormalBehavior
 
    /** Difference with superclass:
      *   - the Version 0 of an acl resource returns the default graph and a PUT on it does not check
@@ -102,13 +107,12 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
               // we do this in 2 stages to later be optimised to 1 later
               // 1. we want to build a Map[Uri,Graph] from the Cofree structure
 
-              val mapDS: Map[Uri, Rdf#Graph] =
-                Cofree.cata[GraF, Meta, Map[Uri, Rdf#Graph]](dt) {
-                  (meta: Meta, grds: GraF[Map[Uri, Rdf#Graph]]) =>
-                    cats.Now(grds.other.fold(Map()) { (m1, m2) =>
-                      m1 ++ m2
-                    } + (meta.url -> grds.graph))
-                }.value
+              val mapDS: Map[Uri, Rdf#Graph] = Cofree.cata[GraF, Meta, Map[Uri, Rdf#Graph]](dt) {
+                (meta: Meta, grds: GraF[Map[Uri, Rdf#Graph]]) =>
+                  cats.Now(grds.other.fold(Map()) { (m1, m2) =>
+                    m1 ++ m2
+                  } + (meta.url -> grds.graph))
+              }.value
 
               import org.eclipse.rdf4j.model.impl.DynamicModelFactory
               import org.eclipse.rdf4j.model.{IRI, Model, Value, Resource as eResource}
@@ -120,7 +124,7 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
                  graph.triples.foreach { tr =>
                    tr.subject match
                     case sub: eResource =>
-                      val pred: IRI  = tr.predicate
+                      val pred: IRI = tr.predicate
                       val obj: Value = tr.objectt
                       model.add(sub, pred, obj, n)
                     case _ =>
@@ -129,7 +133,7 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
                  }
               }
 
-              val out           = new ByteArrayOutputStream(524)
+              val out = new ByteArrayOutputStream(524)
               val wr: RDFWriter = Rio.createWriter(RDFFormat.TRIG, out)
               import org.eclipse.rdf4j.rio.RDFHandlerException
 
@@ -139,18 +143,17 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
                  for st <- model.iterator().asScala do wr.handleStatement(st)
                  wr.endRDF
               catch
-                 case e: RDFHandlerException =>
-              // todo oh no, do something!
-              finally
-                 out.close
-              f(HttpResponse(
-                StatusCodes.OK,
-                Seq(),
-                HttpEntity(`application/trig`.toContentType, new String(out.toByteArray))
-              ))
+                case e: RDFHandlerException => // todo oh no, do something!
+              finally out.close
+              f(
+                HttpResponse(
+                  StatusCodes.OK,
+                  Seq(),
+                  HttpEntity(`application/trig`.toContentType, new String(out.toByteArray))
+                )
+              )
 
-           /* Jena version of how to write out TriG
-  todo: abstract and move to banana-rdf
+           /* Jena version of how to write out TriG todo: abstract and move to banana-rdf
 
 				import org.apache.jena.query.{Dataset, ReadWrite}
 				import org.apache.jena.riot.{Lang, RDFWriter}
@@ -180,19 +183,11 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
               val res: Script[A] =
                 for
                    dataSetReq <- SolidCmd.fetchWithImports(req.uri)
-                   x          <- injectDataSetResponse(dataSetReq)
+                   x <- injectDataSetResponse(dataSetReq)
                 yield x
               cmdmsg.continue(res)
            else cmdmsg.respondWith(plainGet(req))
            Behaviors.same
-
-        override def plainGet(req: HttpRequest): HttpResponse =
-           // todo: avoid duplication of mediaRange calculation -- requires change of signature of overriden method.
-           val mediaRanges: Seq[MediaRange] = req.headers[Accept].flatMap(_.mediaRanges)
-           if lastVersion == 0 then
-              RdfParser.response(defaultGraph, mediaRanges)
-                .withHeaders(Link(aclLinks(aclUri, acinfo)) :: ACResource.VersionHeaders)
-           else super.plainGet(req)
 
         override def Put(cmd: CmdMessage[?]): Unit =
           if lastVersion == 0 then
@@ -209,22 +204,14 @@ class ACResource(uri: Uri, path: FPath, context: ActorContext[AcceptMsg])
                        entity = HttpEntity("we only accept Plain HTTP Put")
                      )
                    )
-              case _ => cmd.respondWith(HttpResponse(
-                  StatusCodes.NotImplemented,
-                  entity = HttpEntity("we don't yet deal with PUT for " + cmd.commands)
-                ))
+              case _ => cmd.respondWith(
+                  HttpResponse(
+                    StatusCodes.NotImplemented,
+                    entity = HttpEntity("we don't yet deal with PUT for " + cmd.commands)
+                  )
+                )
           else super.Put(cmd)
         end Put
-
-        def defaultGraph: Rdf#Graph =
-           import ops.Graph
-           import run.cosy.http.util.UriX.*
-           if dotLinkName.isContainerAcl then
-              if uri.path.container == Uri.Path./ then
-                 Graph.empty
-              else Resource.defaultACLGraphContainer
-           else
-              Resource.defaultACLGraph
 
    end VersionsInfo
 end ACResource

@@ -1,4 +1,5 @@
 @prefix wac: <http://www.w3.org/ns/auth/acl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix security: <https://w3id.org/security#> .
 
@@ -7,14 +8,15 @@
    wac:agent _:a .
 
 <#R2> a wac:Authorization; 
+   rdfs:comment "We must give this acl read access. There needs to be a more general way of doing this.";
    wac:mode wac:Read;
    wac:agentClass foaf:Agent;
-   wac:default </> .
+   wac:default <.acl> .
 
 <#R3> a wac:Authorization;
    wac:agent _:a ;
    wac:mode wac:Read, wac:Write;
-   wac:default </> .
+   wac:default <.> .
 
 </rfcKey#> security:controller _:a .
 

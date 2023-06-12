@@ -22,6 +22,7 @@ class UriUtilTest extends munit.FunSuite:
    test("uri.withSlash") {
      assertEquals(bbl.withSlash, bblRt)
      assertEquals(ppl.withSlash, pplDir)
+     assertEquals(pplDir.withSlash, pplDir)
    }
 
    test("test path diff") {

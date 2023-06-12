@@ -30,7 +30,7 @@ import run.cosy.http.{FileExtensions, RDFMediaTypes, RdfParser}
 import run.cosy.ldp.ACInfo
 import run.cosy.ldp.Messages.*
 import run.cosy.ldp.SolidCmd.Plain
-import run.cosy.ldp.fs.BasicContainer.{LDPLinkHeaders, PostCreation, aclLinks}
+import run.cosy.ldp.fs.BasicContainer.{LDPLinkHeaders, PostCreation, defaultACLink}
 import run.cosy.ldp.fs.Resource.{StateSaved, connegNamesFor, extension, headersFor}
 import run.cosy.ldp.{ResourceRegistry, fs}
 
@@ -62,14 +62,7 @@ object Resource:
        //			context.log.info("started LDPR actor at " + rUri.path)
        new Resource(rUri, linkName, context).behavior(defaultACL)
      }
-   // guard could be a pool?
-   // var guard: ActorRef = _
 
-//  @throws[Exception](classOf[Exception])
-//  def preStart() = {
-//    log.info(s"starting guard for $ldprUri ")
-//    guard = context.actorOf(Props(new Guard(ldprUri,List())))
-//  }
    case class StateSaved(at: Path, cmd: CmdMessage[?])
 
    def mediaType(path: FPath): MediaType = FileExtensions.forExtension(extension(path))
@@ -111,9 +104,6 @@ object Resource:
    import run.cosy.http.auth.Agent
    import run.cosy.ldp.SolidCmd.ReqDataSet
 
-   /** change to wac.imports when available */
-   val defaultACLGraph: Rdf#Graph          = (URI("") -- owl.imports ->- URI(".acl")).graph
-   val defaultACLGraphContainer: Rdf#Graph = (URI("") -- owl.imports ->- URI("../.acl")).graph
 end Resource
 
 import run.cosy.ldp.fs.BasicContainer.PostCreation
@@ -122,6 +112,7 @@ import run.cosy.ldp.fs.Resource.AcceptMsg
 class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
     extends ResourceTrait(uri, linkPath, context):
    import run.cosy.ldp.fs.Resource.LDPR
+
 
    def archivedBehavior(linkedToFile: String): Option[Behaviors.Receive[AcceptMsg]] =
      if linkedToFile.endsWith(".archive") then Some(GoneBehavior)
@@ -169,8 +160,9 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
       import ACInfo.*
       val acAct: ACInfo = aclActor(aclLinkExists) match
        case None        => defaultAC
-       case Some(acRef) => ACtrlRef(aclUri, acRef)
+       case Some(acRef) => ACtrlRef(uri, aclName, acRef, false)
       new VersionsInfo(lastVersion, linkTo, acAct) {}
+
 
    /** An LDPR created with POST is only finished when the content has downloaded (and potentially
      * been verified)
@@ -207,7 +199,7 @@ class Resource(uri: Uri, linkPath: FPath, context: ActorContext[AcceptMsg])
           cmd.respondWith(HttpResponse(
             Created,
             Location(uri) :: Link(
-              LDPR(Some(uri)) :: aclLinks(aclUri, acInfo)
+              LDPR(Some(uri)) :: aclLinks(acInfo)
             ) :: AllowHeader :: headersFor(att),
             HttpEntity(`text/plain(UTF-8)`, s"uploaded ${att.size()} bytes")
           ))

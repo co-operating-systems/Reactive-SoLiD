@@ -25,8 +25,10 @@ class SolidPostOffice(system: ActorSystem[?]) extends Extension:
    type Ref  = ActorRef[Messages.Route]
    type Attr = Boolean
 
-   /** to start very simple we start with only allowing domain roots. todo: later add data
-     * structures to have paths higher on a server. todo: also wrap in a more secure structure later
+   /** to start very simple we start with only allowing domain roots.
+    * todo: later add data structures to have paths higher on a server.
+    * todo: also wrap in a more secure structure later
+    * todo: the map as to be from (protocol, Authority) to resourceRegistry
      */
    val roots: AtomicReference[Map[Uri.Authority, ResourceRegistry]] = new AtomicReference(Map())
 
